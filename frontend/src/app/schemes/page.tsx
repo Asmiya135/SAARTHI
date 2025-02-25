@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Search, Share2, AlertTriangle, Clock, Building2, Users, MoreVertical, Bookmark } from "lucide-react"
 import Link from "next/link"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -11,6 +12,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { SchemeDetailModal } from "@/components/scheme-detail-modal"
+
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: 'http://localhost:4000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 interface Scheme {
   id: string
@@ -31,81 +41,17 @@ interface Scheme {
     disbursed?: string
   }
   deadline?: string
-  missingDocuments?: string[]
+  // missingDocuments?: string[]
   emoji?: string
   rating?: number
-  reviews?: number
+  reviews?: number 
 }
-
-const schemes: Scheme[] = [
-  {
-    id: "1",
-    ministry: "Ministry Of Agriculture and Farmers Welfare",
-    title: "Agri-Clinics And Agri-Business Centres Scheme",
-    description:
-      "A welfare scheme by the Ministry of Agriculture and Farmers' Welfare was launched in 2002. AC&ABC aims at agricultural development, supplementing the efforts of public extension by providing extension and other services to farmers either on a payment basis or free of cost as per local needs.",
-    visits: 5540,
-    tags: ["Business", "Entrepreneur", "Student", "Training", "Agriculture", "Employment"],
-    grant: "₹5 lakh business loan",
-    eligibilityPercentage: 75,
-    statistics: {
-      centers: "1,500",
-      beneficiaries: "1,200,000",
-    },
-    deadline: "7 days left to apply",
-    missingDocuments: ["Business Plan", "Qualification Certificate"],
-    emoji: "🌾",
-    rating: 4.5,
-    reviews: 128,
-  },
-  {
-    id: "2",
-    ministry: "Ministry Of Finance",
-    title: "Atal Pension Yojana",
-    description:
-      "Atal Pension Yojana (APY) is an old age income security scheme for a savings account holder in the age group of 18-40 years, who is not an income tax-payee. It helps to address longevity risks among workers in unorganized sector and encourages the workers to voluntarily save for retirement.",
-    visits: 6160,
-    tags: ["Pension", "Social Security", "Unorganized Sector"],
-    grant: "₹5,000 monthly pension",
-    eligibilityPercentage: 90,
-    statistics: {
-      subscribers: "4,000,000",
-      disbursed: "₹2,500 Cr",
-    },
-    deadline: "3 days left to apply",
-    missingDocuments: ["Income Certificate"],
-    emoji: "👴",
-    rating: 4.2,
-    reviews: 256,
-  },
-  {
-    id: "3",
-    state: "Assam",
-    ministry: "Ministry of Housing and Urban Affairs",
-    title: "Pradhan Mantri Awas Yojana",
-    description:
-      "A flagship mission implemented by the Ministry of Housing and Urban Affairs to provide housing for all in urban areas.",
-    visits: 8240,
-    tags: ["Housing", "Urban Development", "Subsidy"],
-    grant: "₹2.5 lakh housing grant",
-    eligibilityPercentage: 85,
-    statistics: {
-      houses: "2,000,000",
-      families: "2,000,000",
-    },
-    deadline: "5 days left to apply",
-    missingDocuments: ["Income Certificate"],
-    emoji: "🏠",
-    rating: 4.8,
-    reviews: 512,
-  },
-]
 
 const filters = [
   {
     id: "state",
     label: "State",
-    options: ["All States", "Assam", "Bihar", "Delhi", "Gujarat", "Maharashtra"],
+    options: ["All States", "Assam", "Bihar", "Delhi", "Gujarat", "Maharashtra", "Puducherry"],
   },
   {
     id: "gender",
@@ -199,86 +145,22 @@ const filters = [
   },
 ]
 
-const schemeDetails = {
-  id: "1",
-  title:
-    "Immediate Relief Assistance under Welfare and Relief for Fishermen During Lean Seasons and Natural Calamities Scheme",
-  ministry: "Ministry of Fisheries",
-  description: "Financial assistance for families of missing fishermen",
-  location: "Puducherry",
-  tags: ["Missing", "Fisherman", "Relief", "Financial Assistance", "Family"],
-  details:
-    'The scheme "Immediate Relief Assistance" is a Sub-Component under the scheme "Welfare and Relief for Fishermen During Lean Seasons and Natural Calamities Scheme". The scheme is extended to all the regions of the Union territory of Puducherry. The scheme is introduced with the objective of extending financial assistance to the fishermen\'s families to compensate for the loss due to the missing breadwinner and to support them financially to run their family.',
-  benefits: {
-    amount:
-      "₹ 1,00,000, in two installments of ₹ 50,000 each, as immediate relief assistance for the family (legal heir) of the missing fisherman.",
-    disbursal: [
-      "Initially, 50% will be extended within 3 months from the date of receipt of the application from the family (legal heir).",
-      "The family (legal heir) should approach this department for the release of the balance 50% of the relief which will be deposited in the bank in a joint account in the name of kin (legal heir) and the competent authority concerned.",
-      "If no further information is received about the missing person, the balance amount will be released in favour of the next of kin (legal heir), after the prescribed period of 9 months from the date of release of 1st part of lump sum.",
-    ],
-    note: "*In case of the return of the missing fishermen, the amount extended as compensation either ₹ 50,000 or ₹ 1,00,000 as the case may be, will be recovered by invoking an insurance bond.",
-  },
-  eligibility: [
-    "The fisherman must be registered with the Fisheries Department",
-    "Must be a resident of Puducherry",
-    "The family must file a missing person report with the local police station",
-  ],
-  applicationProcess: {
-    steps: [
-      {
-        title: "File Missing Person Report",
-        description: "File a missing person report at the local police station and obtain a copy of the FIR",
-      },
-      {
-        title: "Submit Application",
-        description: "Submit the application form along with required documents to the Fisheries Department",
-      },
-      {
-        title: "Verification",
-        description: "The department will verify the documents and process the application",
-      },
-      {
-        title: "Disbursal",
-        description: "First installment will be released within 3 months of application",
-      },
-    ],
-  },
-  documents: [
-    "Copy of the FIR filed at the police station",
-    "Proof of registration with Fisheries Department",
-    "Residence proof of Puducherry",
-    "Identity proof of the legal heir",
-    "Bank account details",
-    "Two passport size photographs",
-  ],
-  faq: [
-    {
-      question: "How long does it take to receive the first installment?",
-      answer:
-        "The first installment (50% of the total amount) will be released within 3 months from the date of application submission.",
-    },
-    {
-      question: "When can I apply for the second installment?",
-      answer:
-        "The family can approach the department for the second installment after 9 months from the date of release of the first installment.",
-    },
-    {
-      question: "What happens if the missing person returns?",
-      answer: "If the missing fisherman returns, the compensation amount will be recovered through an insurance bond.",
-    },
-  ],
-  sources: [
-    "Fisheries Department, Government of Puducherry",
-    "Welfare and Relief for Fishermen Scheme Guidelines",
-    "Government Order No. 123/2023",
-  ],
-}
+// Sample scheme details for the modal (will be replaced with API data)
+const schemeDetails = {}
 
 export default function SchemesPage() {
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>(() => {
+  const [allSchemes, setAllSchemes] = useState([])
+  const [displayedSchemes, setDisplayedSchemes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+  const [totalSchemes, setTotalSchemes] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  
+  const [selectedFilters, setSelectedFilters] = useState(() => {
     const initialFilters = Object.fromEntries(filters.map((filter) => [filter.id, filter.options[0]]))
     const category = searchParams.get("category")
     if (category) {
@@ -286,11 +168,253 @@ export default function SchemesPage() {
     }
     return initialFilters
   })
+  
   const [sortOrder, setSortOrder] = useState("a-z")
-  const [selectedScheme, setSelectedScheme] = useState<string | null>(null)
-  const [bookmarkedSchemes, setBookmarkedSchemes] = useState<string[]>([])
+  const [selectedScheme, setSelectedScheme] = useState(null)
+  const [bookmarkedSchemes, setBookmarkedSchemes] = useState([])
 
-  const handleShare = async (scheme: Scheme) => {
+  // Function to get category emoji
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      "agriculture": "🌾",
+      "education": "📚",
+      "health": "🏥",
+      "housing": "🏠",
+      "employment": "💼",
+      "welfare": "🤲",
+      "financial": "💰",
+      "rural": "🏞️",
+      "urban": "🏙️"
+    }
+    return emojiMap[category?.toLowerCase()] || "📋"
+  }
+
+  // Parse documents requirements into an array
+  const parseDocuments = (docString) => {
+    if (!docString) return []
+    return docString.split(';').map(doc => doc.trim()).filter(Boolean)
+  }
+
+  // Function to transform API data to match frontend Scheme interface
+  const transformSchemeData = (data) => {
+    return data.map((scheme, index) => ({
+      id: scheme._id?.$oid || index.toString(),
+      ministry: scheme.ministry ,
+      title: scheme.title || "Untitled Scheme",
+      description: scheme.description || "No description available",
+      state: scheme.state || undefined,
+      visits: Math.floor(Math.random() * 10000),
+      tags: [scheme.tag1, scheme.tag2, scheme.tag3, scheme.tag4, scheme.tag5].filter(Boolean),
+      grant: `₹${scheme.benefits || 10}`,
+      eligibilityPercentage: Math.floor(Math.random() * 30) + 70, // Random between 70-100%
+      statistics: {
+        beneficiaries: scheme.benefits ? `${Math.floor(Math.random() * 1000) + 500},000` : "N/A",
+        disbursed: scheme.benefits ? `₹${Math.floor(Math.random() * 100) + 10} Crore` : "N/A",
+      },
+      deadline: Math.floor(Math.random()*100)+" days left to apply",
+      missingDocuments: parseDocuments(scheme.docReq).slice(0, 2),
+      emoji: getCategoryEmoji(scheme.Category),
+      rating: (Math.random() * 1.5 + 3.5).toFixed(1),
+      reviews: Math.floor(Math.random() * 200) + 50,
+    }))
+  }
+
+  // Function to fetch all schemes using axios
+  const fetchAllSchemes = async () => {
+    try {
+      setLoading(true)
+      const response = await api.get('/schemes/all')
+      const data = response.data
+      
+      // Transform backend data to match frontend Scheme interface
+      const transformedData = transformSchemeData(data)
+      setAllSchemes(transformedData)
+      setTotalSchemes(transformedData.length)
+      setTotalPages(Math.ceil(transformedData.length / itemsPerPage))
+    } catch (err) {
+      setError(err.response?.data?.message || err.message)
+      setAllSchemes([])
+      setTotalSchemes(0)
+      setTotalPages(1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Function to search schemes by keyword using axios
+  const searchSchemes = async (keyword) => {
+    try {
+      setLoading(true)
+      const response = await api.get('/schemes/bykey', {
+        params: {
+          keyword,
+          page: currentPage,
+          limit: itemsPerPage
+        }
+      })
+      const data = response.data
+      
+      // Transform backend data to match frontend Scheme interface
+      const transformedData = transformSchemeData(data)
+      setAllSchemes(transformedData)
+      setTotalSchemes(transformedData.length)
+      setTotalPages(Math.ceil(transformedData.length / itemsPerPage))
+      
+      // Don't reset current page if using pagination
+      if (!keyword) {
+        setCurrentPage(1) // Reset to first page on new search only
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message)
+      setAllSchemes([])
+      setTotalSchemes(0)
+      setTotalPages(1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Function to filter schemes based on selected filters
+  const filterSchemes = (filters = selectedFilters) => {
+    const state = filters.state !== "All States" ? filters.state : null;
+    const gender = filters.gender !== "All" ? filters.gender : null;
+    const caste = filters.caste !== "All" ? filters.caste : null;
+    const level = filters.level !== "All Levels" ? filters.level : null;
+    const residence = filters.residence !== "All" ? filters.residence : null;
+    const minority = filters.minority !== "All" ? filters.minority : null;
+    const differentlyAbled = filters["differently-abled"] !== "All" ? filters["differently-abled"] : null;
+    const benefitType = filters["benefit-type"] !== "All Types" ? filters["benefit-type"] : null;
+    const dbtScheme = filters["dbt-scheme"] !== "All" ? "DBT" : null;
+    const maritalStatus = filters["marital-status"] !== "All" ? filters["marital-status"] : null;
+    const belowPovertyLine = filters["below-poverty-line"] !== "All" ? filters["below-poverty-line"] : null;
+    const occupation = filters.occupation !== "All" ? filters.occupation : null;
+    const student = filters.student !== "All" ? "Student" : null;
+  
+    const keywordFromFilters =
+      state ||
+      gender ||
+      caste ||
+      level ||
+      residence ||
+      minority ||
+      differentlyAbled ||
+      benefitType ||
+      dbtScheme ||
+      maritalStatus ||
+      belowPovertyLine ||
+      occupation ||
+      student;
+  
+    if (keywordFromFilters) {
+      searchSchemes(keywordFromFilters);
+    } else if (searchQuery) {
+      searchSchemes(searchQuery);
+    } else {
+      fetchAllSchemes();
+    }
+  };
+  
+  // ✅ Debounced search effect (filters apply instantly, but search is delayed)
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery) {
+        searchSchemes(searchQuery);
+      }
+    }, 500);
+  
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    getPaginatedSchemes();
+  }, [allSchemes, currentPage]);  
+
+  // Apply pagination to get current schemes
+  const getPaginatedSchemes = () => {
+    const indexOfLastScheme = currentPage * itemsPerPage;
+    const indexOfFirstScheme = indexOfLastScheme - itemsPerPage;
+    setDisplayedSchemes(allSchemes.slice(indexOfFirstScheme, indexOfLastScheme));
+  }
+
+  // Function to handle page change
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  }
+
+  // Effect to load schemes on initial render
+  useEffect(() => {
+    // Create a cancellation token source for axios request
+    const cancelTokenSource = axios.CancelToken.source()
+    
+    fetchAllSchemes()
+    
+    // Clean up function to cancel any pending requests when component unmounts
+    return () => {
+      cancelTokenSource.cancel('Component unmounted')
+    }
+  }, [])
+
+  // Effect to handle search changes
+  useEffect(() => {
+    const cancelTokenSource = axios.CancelToken.source()
+    
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery) {
+        searchSchemes(searchQuery)
+      } else {
+        filterSchemes()
+      }
+    }, 500)
+
+    return () => {
+      clearTimeout(delayDebounceFn)
+      cancelTokenSource.cancel('New search initiated')
+    }
+  }, [searchQuery])
+
+  // Effect to handle filter changes
+  useEffect(() => {
+    const cancelTokenSource = axios.CancelToken.source()
+    
+    filterSchemes()
+    
+    return () => {
+      cancelTokenSource.cancel('Filter changed')
+    }
+  }, [selectedFilters])
+
+  // Effect to handle sort order
+  useEffect(() => {
+    if (allSchemes.length === 0) return;
+    
+    const sortedSchemes = [...allSchemes];
+    
+    switch (sortOrder) {
+      case "a-z":
+        sortedSchemes.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "z-a":
+        sortedSchemes.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case "visits":
+        sortedSchemes.sort((a, b) => b.visits - a.visits);
+        break;
+      case "rating":
+        sortedSchemes.sort((a, b) => b.rating - a.rating);
+        break;
+      default:
+        break;
+    }
+    
+    setAllSchemes(sortedSchemes);
+  }, [sortOrder]);
+
+  // Effect to update displayed schemes when page changes or all schemes change
+  useEffect(() => {
+    getPaginatedSchemes();
+  }, [currentPage, allSchemes]);
+
+  const handleShare = async (scheme) => {
     const shareText = `Check out ${scheme.title} - ${scheme.grant}
 
 Eligibility: ${scheme.eligibilityPercentage}%
@@ -301,11 +425,81 @@ Apply now on MyScheme`
     window.open(shareUrl, "_blank")
   }
 
-  const toggleBookmark = (schemeId: string) => {
+  const toggleBookmark = (schemeId) => {
     setBookmarkedSchemes((prev) =>
       prev.includes(schemeId) ? prev.filter((id) => id !== schemeId) : [...prev, schemeId],
     )
   }
+
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1) // Reset to first page on new search
+  }
+
+  const handleFilterChange = (filterId, value) => {
+    setSelectedFilters((prevFilters) => {
+      const updatedFilters = {
+        ...prevFilters,
+        [filterId]: value,
+      };
+  
+      setCurrentPage(1); // Reset to first page when filters change
+      return updatedFilters;
+    });
+  };
+
+  useEffect(() => {
+    filterSchemes(selectedFilters);
+  }, [selectedFilters]);
+
+  const resetFilters = () => {
+    const resetFilters = Object.fromEntries(filters.map((filter) => [filter.id, filter.options[0]]))
+    setSelectedFilters(resetFilters)
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchAllSchemes()
+  }
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisibleButtons = 5;
+    
+    // Show just a few buttons with ellipsis for many pages
+    if (totalPages <= maxVisibleButtons) {
+      // Show all page numbers
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always show first page
+      pageNumbers.push(1);
+      
+      if (currentPage > 2) {
+        // Show ellipsis after first page if current page is not near the beginning
+        pageNumbers.push('...');
+      }
+      
+      // Show current page and neighbors
+      const startPage = Math.max(2, currentPage - 1);
+      const endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        if (i === 1 || i === totalPages) continue; // Skip first and last which are always shown
+        pageNumbers.push(i);
+      }
+      
+      if (currentPage < totalPages - 1) {
+        // Show ellipsis before last page if current page is not near the end
+        pageNumbers.push('...');
+      }
+      
+      // Always show last page
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -322,7 +516,7 @@ Apply now on MyScheme`
                 placeholder="Search Schemes"
                 className="pl-10"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearch}
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
@@ -339,19 +533,29 @@ Apply now on MyScheme`
               <Button
                 variant="link"
                 className="text-blue-600 hover:text-blue-700 p-0 h-auto"
-                onClick={() => {
-                  const resetFilters = Object.fromEntries(filters.map((filter) => [filter.id, filter.options[0]]))
-                  setSelectedFilters(resetFilters)
-                }}
+                onClick={resetFilters}
               >
                 Reset
               </Button>
             </div>
             <Accordion type="multiple" className="space-y-2">
               {filters.map((filter) => (
-                <AccordionItem key={filter.id} value={filter.id} className="border rounded-lg">
+                <AccordionItem 
+                  key={filter.id} 
+                  value={filter.id} 
+                  className={`border rounded-lg ${
+                    selectedFilters[filter.id] !== filter.options[0] ? "border-blue-500 bg-blue-50" : ""
+                  }`}
+                >
                   <AccordionTrigger className="px-4 hover:no-underline">
-                    <span className="text-sm font-medium">{filter.label}</span>
+                    <span className="text-sm font-medium flex items-center justify-between w-full">
+                      {filter.label}
+                      {selectedFilters[filter.id] !== filter.options[0] && (
+                        <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-700 border-blue-300">
+                          {selectedFilters[filter.id]}
+                        </Badge>
+                      )}
+                    </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2">
@@ -362,12 +566,7 @@ Apply now on MyScheme`
                             name={filter.id}
                             value={option}
                             checked={selectedFilters[filter.id] === option}
-                            onChange={(e) => {
-                              setSelectedFilters({
-                                ...selectedFilters,
-                                [filter.id]: e.target.value,
-                              })
-                            }}
+                            onChange={(e) => handleFilterChange(filter.id, e.target.value)}
                             className="text-blue-600 focus:ring-blue-600"
                           />
                           {option}
@@ -384,7 +583,7 @@ Apply now on MyScheme`
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-lg font-semibold">
-                Total <span className="text-blue-600">41</span> Schemes Available
+                Total <span className="text-blue-600">{totalSchemes}</span> Schemes Available
               </h1>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Sort:</span>
@@ -402,142 +601,177 @@ Apply now on MyScheme`
               </div>
             </div>
 
-            <div className="space-y-4">
-              {schemes.map((scheme) => (
-                <Card key={scheme.id} className="overflow-hidden">
-                  <CardHeader className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        {scheme.state && <div className="text-sm text-gray-600">{scheme.state}</div>}
-                        <div className="text-sm text-gray-600">{scheme.ministry}</div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{scheme.emoji}</span>
-                          <h3 className="text-xl font-semibold text-blue-600">{scheme.title}</h3>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                            {scheme.tags[0]}
-                          </Badge>
+            {loading ? (
+              <div className="flex justify-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 p-6 rounded-lg">
+                <h3 className="text-red-800 font-semibold mb-2">Error loading schemes</h3>
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={fetchAllSchemes}>Try Again</Button>
+              </div>
+            ) : displayedSchemes.length === 0 ? (
+              <div className="text-center p-12">
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No schemes found</h3>
+                <p className="text-gray-600 mb-4">Try adjusting your search or filters</p>
+                <Button onClick={resetFilters}>Reset Filters</Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {displayedSchemes.map((scheme) => (
+                  <Card key={scheme.id} className="overflow-hidden">
+                    <CardHeader className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          {scheme.state && <div className="text-sm text-gray-600">{scheme.state}</div>}
+                          <div className="text-sm text-gray-600">{scheme.ministry}</div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-yellow-600">{scheme.rating} ★</span>
-                            <span className="text-sm text-gray-600">({scheme.reviews} reviews)</span>
+                            <span className="text-2xl">{scheme.emoji}</span>
+                            <h3 className="text-xl font-semibold text-blue-600">{scheme.title}</h3>
                           </div>
+                          <div className="flex items-center gap-4">
+                            {scheme.tags && scheme.tags[0] && (
+                              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                                {scheme.tags[0]}
+                              </Badge>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-yellow-600">{scheme.rating} ★</span>
+                              <span className="text-sm text-gray-600">({scheme.reviews} reviews)</span>
+                            </div>
+                          </div>
+                          <p className="text-gray-600">{scheme.grant}</p>
                         </div>
-                        <p className="text-gray-600">{scheme.grant}</p>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleShare(scheme)}>
+                            <Share2 className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleBookmark(scheme.id)
+                            }}
+                          >
+                            <Bookmark
+                              className={`h-5 w-5 ${
+                                bookmarkedSchemes.includes(scheme.id) ? "fill-yellow-400 text-yellow-400" : ""
+                              }`}
+                            />
+                          </Button>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleShare(scheme)}>
-                          <Share2 className="h-5 w-5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleBookmark(scheme.id)
-                          }}
-                        >
-                          <Bookmark
-                            className={`h-5 w-5 ${
-                              bookmarkedSchemes.includes(scheme.id) ? "fill-yellow-400 text-yellow-400" : ""
-                            }`}
-                          />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
 
-                  <CardContent className="px-4 py-3 border-t border-b">
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="text-3xl font-bold text-blue-600">{scheme.eligibilityPercentage}%</div>
-                        <div className="text-sm text-gray-600">Eligible</div>
-                      </div>
-                      <div className="flex gap-6 flex-1">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-50 rounded-lg">
-                            <Building2 className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="text-xl font-semibold">
-                              {scheme.statistics.houses || scheme.statistics.centers || scheme.statistics.subscribers}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {scheme.statistics.houses
-                                ? "houses built"
-                                : scheme.statistics.centers
-                                  ? "centers established"
-                                  : "active subscribers"}
-                            </div>
-                          </div>
+                    <CardContent className="px-4 py-3 border-t border-b">
+                      <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="text-3xl font-bold text-blue-600">{scheme.eligibilityPercentage}%</div>
+                          <div className="text-sm text-gray-600">Eligible</div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-green-50 rounded-lg">
-                            <Users className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="text-xl font-semibold">
-                              {scheme.statistics.families ||
-                                scheme.statistics.beneficiaries ||
-                                scheme.statistics.disbursed}
+                        <div className="flex gap-6 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 rounded-lg">
+                              <Building2 className="h-5 w-5 text-blue-600" />
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {scheme.statistics.families
-                                ? "families covered"
-                                : scheme.statistics.beneficiaries
-                                  ? "beneficiaries"
-                                  : "amount disbursed"}
+                            <div>
+                              <div className="text-sm text-gray-600">Beneficiaries</div>
+                              <div className="font-medium">{scheme.statistics?.beneficiaries || "N/A"}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 rounded-lg">
+                              <Users className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-600">Disbursed</div>
+                              <div className="font-medium">{scheme.statistics?.disbursed || "N/A"}</div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    {scheme.missingDocuments && scheme.missingDocuments.length > 0 && (
-                      <div className="mt-4 bg-red-50 border border-red-100 rounded-lg p-3 flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-red-600">Missing: {scheme.missingDocuments.join(", ")}</div>
-                          <div className="text-sm text-red-600">Please upload the required documents to proceed</div>
+                        <div className="flex items-center gap-2">
+                          {/* <AlertTriangle className="h-5 w-5 text-amber-500" /> */}
+                          {/* <div className="text-sm">
+                            <span className="font-medium">{scheme.missingDocuments?.length || 0}</span> documents
+                            missing
+                          </div> */}
                         </div>
                       </div>
-                    )}
+                    </CardContent>
 
-                    {scheme.deadline && (
-                      <div className="mt-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3 flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-yellow-600" />
-                        <div className="font-medium text-yellow-600">{scheme.deadline}</div>
+                    <CardFooter className="p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-sm font-medium">{scheme.deadline}</span>
                       </div>
-                    )}
-                  </CardContent>
+                      <Button onClick={() => setSelectedScheme(scheme)}>View Details</Button>
+                    </CardFooter>
+                  </Card>
+                ))}
 
-                  <CardFooter className="p-4 flex items-center justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {scheme.tags.slice(1).map((tag) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex justify-center">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      
+                      {getPageNumbers().map((page, index) => (
+                        page === '...' ? (
+                          <span key={`ellipsis-${index}`} className="px-2">...</span>
+                        ) : (
+                          <Button
+                            key={`page-${page}`}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </Button>
+                        )
                       ))}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
                     </div>
-                    <Button
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={() => setSelectedScheme(scheme.id)}
-                    >
-                      View Detail
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-
-            {selectedScheme && <SchemeDetailModal scheme={schemeDetails} onClose={() => setSelectedScheme(null)} />}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Scheme Detail Modal */}
+      {selectedScheme && (
+        <SchemeDetailModal
+          scheme={selectedScheme}
+          isOpen={!!selectedScheme}
+          onClose={() => setSelectedScheme(null)}
+        />
+      )}
     </div>
   )
 }
+
+
+//just fix lag in filters
+
 
