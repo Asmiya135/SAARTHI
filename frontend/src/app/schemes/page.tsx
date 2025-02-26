@@ -344,7 +344,7 @@ export default function SchemesPage() {
   // Effect to load schemes on initial render
   useEffect(() => {
     // Create a cancellation token source for axios request
-    const cancelTokenSource = axios.CancelToken.source()
+    const cancelTokenSource = axios.CancelToken.source()x 
     
     fetchAllSchemes()
     
