@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { Bell, Search, Moon, Menu } from "lucide-react"
-import Image from "next/image"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Bell, Search, Moon, Menu } from "lucide-react";
+import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { useState } from "react"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import GoogleTranslate from "@/components/GoogleTranslate";
 
 export function Header() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b shadow-sm">
@@ -28,7 +29,7 @@ export function Header() {
           </Button>
           <div className="flex items-center gap-2">
             <Image src="/image.png" alt="UMANG" width={32} height={32} className="h-8 w-auto" />
-            <span className="text-lg font-bold text-blue-600">ABHUDAYA</span>
+            <span className="text-lg font-bold text-blue-600">UMANG</span>
           </div>
         </div>
 
@@ -43,7 +44,7 @@ export function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-4">
           <Button variant="outline" className="hidden md:flex items-center gap-2">
-            <Image src="/ISL.png" alt="ISL Chatbot" width={20} height={20} />
+            <Image src="/image.png" alt="ISL Chatbot" width={20} height={20} />
             <span>ISL Chatbot</span>
           </Button>
 
@@ -86,9 +87,11 @@ export function Header() {
               <DropdownMenuItem>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Google Translate Component */}
+          <GoogleTranslate />
         </div>
       </div>
     </header>
-  )
+  );
 }
-
