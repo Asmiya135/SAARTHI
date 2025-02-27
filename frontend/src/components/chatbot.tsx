@@ -1,375 +1,298 @@
-"use client"
+import { useState, useRef, useEffect } from "react";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageCircle, Send, Mic, Loader2, Volume2, VolumeX } from "lucide-react";
 
-import type React from "react"
-import { useState, useRef, useEffect, useCallback } from "react"
-import { X, Send, Mic, Bot, Loader2, AlertTriangle } from 'lucide-react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
-// import { toast } from "@/components/ui/use-toast"
 
-interface Message {
-  role: "user" | "bot"
-  content: string
-  timestamp: Date
-  audioUrl?: string
-}
+export function Chatbot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([{ role: "bot", content: "Hello! How can I assist you today?" }]);
+  const [input, setInput] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const messagesEndRef = useRef(null);
+  const audioRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const chunksRef = useRef([]);
+  const speechSynthesisRef = useRef(null);
 
-const MAX_RECORDING_TIME = 60 // 60 seconds max for recording
-const RETRY_DELAY = 2000 // 2 seconds
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-export default function Chatbot() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "bot", content: "Hello! How can I assist you today?", timestamp: new Date() },
-  ])
-  const [input, setInput] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [voiceActivity, setVoiceActivity] = useState(0)
-
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<NodeJS.Timeout>()
-  const animationRef = useRef<number>()
-
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorderRef.current = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" })
-        uploadAudio(audioBlob)
-      }
-
-      mediaRecorderRef.current.start()
-      setIsRecording(true)
-      setRecordingTime(0)
-      setVoiceActivity(0)
-
-      timerRef.current = setInterval(() => {
-        setRecordingTime((prevTime) => {
-          if (prevTime >= MAX_RECORDING_TIME - 1) {
-            stopRecording()
-            return MAX_RECORDING_TIME
-          }
-          return prevTime + 1
-        })
-      }, 1000)
-
-      // Simulate voice activity
-      const animateVoiceActivity = () => {
-        setVoiceActivity(Math.random() * 0.5 + 0.5)
-        animationRef.current = requestAnimationFrame(animateVoiceActivity)
-      }
-      animateVoiceActivity()
-    } catch (error) {
-      console.error("Error starting recording:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-      setErrorMessage(`Failed to start recording: ${errorMessage}. Please check your microphone settings.`)
-      toast({
-        title: "Recording Error",
-        description: `Failed to start recording: ${errorMessage}. Please check your microphone settings.`,
-        variant: "destructive",
-      })
-    }
-  }, [])
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop()
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
-    }
-    setIsRecording(false)
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-    }
-    setVoiceActivity(0)
-  }, [])
-
-  const uploadAudio = async (audioBlob: Blob) => {
-    const formData = new FormData()
-    formData.append('audio', audioBlob, 'recording.wav')
-
-    try {
-      const response = await fetch('/api/upload-audio', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-      }
-
-      const data = await response.json()
-      console.log('Audio uploaded successfully:', data.filePath)
+  useEffect(() => {
+    // Initialize speech synthesis
+    speechSynthesisRef.current = window.speechSynthesis;
     
-      // Add the audio message to the chat
-      setMessages(prev => [...prev, {
-        role: 'user',
-        content: 'Audio message',
-        timestamp: new Date(),
-        audioUrl: data.filePath
-      }])
-
-      // Simulate bot response (replace this with actual bot logic)
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'bot',
-          content: "I've received your audio message. How can I help you with that?",
-          timestamp: new Date()
-        }])
-      }, 1000)
-
-    } catch (error) {
-      console.error('Error uploading audio:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      setErrorMessage(`Failed to upload audio: ${errorMessage}. Please try again.`)
-      toast({
-        title: 'Audio Upload Error',
-        description: `Failed to upload audio: ${errorMessage}. Please try again.`,
-        variant: 'destructive',
-      })
-    } finally {
-      setIsVoiceModalOpen(false)
-    }
-  }
-
-  const handleVoiceInput = () => {
-    setIsVoiceModalOpen(true)
-    startRecording()
-  }
-
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault()
-
-    if (!input.trim()) return
-
-    const userMessage = { role: "user" as const, content: input, timestamp: new Date() }
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsTyping(true)
-
-    // Simulate bot response (replace this with actual bot logic)
-    setTimeout(() => {
-      const botResponse =
-        "Thank you for your message. I'm here to help you with any questions about government schemes and services."
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          content: botResponse,
-          timestamp: new Date(),
-        },
-      ])
-      setIsTyping(false)
-    }, 1000)
-  }
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [scrollToBottom])
-
-  useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
+      // Clean up any ongoing speech
+      if (speechSynthesisRef.current) {
+        speechSynthesisRef.current.cancel();
       }
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+      
+      // Clean up audio stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
-      }
-    }
-  }, [])
+    };
+  }, []);
 
-  if (!isOpen) {
-    return (
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 rounded-full shadow-lg gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-      >
-        <Bot className="h-5 w-5" />
-        <span>सारथीBot</span>
-      </Button>
-    )
-  }
+  // Speak the bot's message
+  const speakMessage = (text) => {
+    if (!ttsEnabled || !speechSynthesisRef.current) return;
+    
+    // Cancel any ongoing speech
+    speechSynthesisRef.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // You can customize voice properties
+    utterance.rate = 1.0;  // Speed of speech
+    utterance.pitch = 1.0; // Pitch of voice
+    utterance.volume = 1.0; // Volume
+    
+    // Optional: Set a specific voice if available
+    const voices = speechSynthesisRef.current.getVoices();
+    // You can choose a specific voice by filtering the voices array
+    // For example: const voice = voices.find(v => v.name === 'Google हिन्दी');
+    // utterance.voice = voice;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    speechSynthesisRef.current.speak(utterance);
+  };
+
+  // Toggle text-to-speech feature
+  const toggleTTS = () => {
+    if (isSpeaking && speechSynthesisRef.current) {
+      speechSynthesisRef.current.cancel();
+      setIsSpeaking(false);
+    }
+    setTtsEnabled(!ttsEnabled);
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = { role: "user", content: input };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post("YOUR_API_ENDPOINT", { message: input });
+      const botResponse = { role: "bot", content: response.data.reply };
+      setMessages([...updatedMessages, botResponse]);
+      
+      // Speak the bot's response
+      speakMessage(botResponse.content);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMessage = { 
+        role: "bot", 
+        content: "Sorry, something went wrong. Please try again." 
+      };
+      setMessages([...updatedMessages, errorMessage]);
+      
+      // Speak the error message
+      speakMessage(errorMessage.content);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      chunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.addEventListener("dataavailable", (event) => {
+        chunksRef.current.push(event.data);
+      });
+
+      mediaRecorder.addEventListener("stop", async () => {
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/wav" });
+        await processAudioInput(audioBlob);
+      });
+
+      mediaRecorder.start();
+      setRecording(true);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      const errorMessage = { role: "bot", content: "Couldn't access your microphone." };
+      setMessages([...messages, errorMessage]);
+      speakMessage(errorMessage.content);
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      streamRef.current.getTracks().forEach(track => track.stop());
+      setRecording(false);
+    }
+  };
+
+  const processAudioInput = async (audioBlob) => {
+    setIsLoading(true);
+    const updatedMessages = [...messages, { role: "user", content: "🎤 Voice message" }];
+    setMessages(updatedMessages);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", audioBlob, "audio.mp3"); // Ensure the file is sent as an MP3 file
+
+      // Process the audio file directly in the backend
+      const response = await axios.post("http://localhost:9000/transcribe_with_node", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      const botResponse = { role: "bot", content: response.data.translatedText.replace("*","") };
+      setMessages([...updatedMessages, botResponse]);
+
+      const audioBase64 = response.data.audioBase64[0];
+      
+      // Play the audio response
+      const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
+      audio.play();
+      
+      // Speak the bot's response
+      speakMessage(botResponse.content);
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      const errorMessage = { role: "bot", content: "Audio processing failed." };
+      setMessages([...updatedMessages, errorMessage]);
+      speakMessage(errorMessage.content);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Stop speaking current message
+  const stopSpeaking = () => {
+    if (speechSynthesisRef.current) {
+      speechSynthesisRef.current.cancel();
+      setIsSpeaking(false);
+    }
+  };
 
   return (
-    <>
-      {isVoiceModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
-          <div className="relative w-32 h-32">
-            <div
-              className={cn(
-                "absolute inset-0 rounded-full transition-all duration-300",
-                "bg-gradient-to-b from-white to-blue-500",
-                isRecording ? "animate-pulse" : "opacity-50",
-              )}
-              style={{
-                transform: `scale(${1 + voiceActivity * 0.3})`,
-                opacity: isRecording ? 0.8 : 0.5,
-              }}
-            />
-          </div>
-
-          <p className="mt-4 text-white text-lg">{isRecording ? `Recording: ${recordingTime}s` : "Tap to speak"}</p>
-
-          {errorMessage && (
-            <div className="mt-4 flex items-center gap-2 text-red-400">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">{errorMessage}</span>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button className="fixed bottom-4 right-4 gap-2 rounded-full shadow-lg" onClick={() => setIsOpen(true)}>
+          <MessageCircle className="h-5 w-5" />
+          सारथीBot
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="flex flex-col h-full p-0">
+        <SheetHeader className="px-4 py-3 border-b">
+          <div className="flex justify-between items-center">
+            <div>
+              <SheetTitle>सारथीBot - Your Digital Assistant</SheetTitle>
+              <SheetDescription>Ask me anything about government schemes and services.</SheetDescription>
             </div>
-          )}
-
-          <div className="fixed bottom-8 flex items-center gap-4">
-            <Button
-              size="lg"
-              variant="ghost"
-              className={cn(
-                "rounded-full w-16 h-16 flex items-center justify-center",
-                isRecording ? "bg-red-500/20 text-red-500" : "text-gray-400 hover:text-white",
-              )}
-              onClick={() => {
-                if (isRecording) {
-                  stopRecording()
-                } else {
-                  startRecording()
-                }
-              }}
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={toggleTTS} 
+              title={ttsEnabled ? "Turn off text-to-speech" : "Turn on text-to-speech"}
             >
-              <Mic className="h-8 w-8" />
-            </Button>
-
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-full w-12 h-12 text-gray-400 hover:text-white"
-              onClick={() => {
-                stopRecording()
-                setIsVoiceModalOpen(false)
-              }}
-            >
-              <X className="h-6 w-6" />
+              {ttsEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
             </Button>
           </div>
-        </div>
-      )}
-
-      <div className="fixed inset-4 sm:inset-auto sm:right-4 sm:bottom-4 sm:w-[400px] sm:h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="h-6 w-6 text-white" />
-              <div>
-                <h1 className="font-semibold text-white">सारथीBot</h1>
-                <p className="text-xs text-purple-100">Your Digital Assistant</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-white hover:bg-white/20"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-purple-100 mt-2">Ask me anything about government schemes and services.</p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message, i) => (
-            <div key={i} className={cn("flex gap-2", message.role === "user" ? "justify-end" : "justify-start")}>
-              {message.role === "bot" && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  "rounded-lg px-4 py-2 max-w-[80%] space-y-1",
-                  message.role === "user"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white",
-                )}
+        </SheetHeader>
+        <ScrollArea className="flex-1 px-4 py-2">
+          {messages.map((message, index) => (
+            <div key={index} className={`mb-4 flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div 
+                className={`rounded-lg p-3 max-w-[80%] ${
+                  message.role === "user" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-muted"
+                }`}
               >
-                <p className="text-sm">{message.content}</p>
-                {message.audioUrl && <audio controls src={message.audioUrl} className="mt-2 max-w-full" />}
-                <p className="text-[10px] opacity-70">{message.timestamp.toLocaleTimeString()}</p>
+                {message.content}
+                {message.role === "bot" && ttsEnabled && (
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-6 w-6 ml-2 inline-flex" 
+                    onClick={() => speakMessage(message.content)}
+                    title="Read aloud"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}
-          {isTyping && (
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <div className="rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-700">
-                <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-              </div>
+          <div ref={messagesEndRef} />
+        </ScrollArea>
+        <div className="px-4 py-3 border-t">
+          {isSpeaking && (
+            <div className="flex justify-center mb-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={stopSpeaking} 
+                className="text-xs"
+              >
+                <VolumeX className="h-4 w-4 mr-1" /> Stop Reading
+              </Button>
             </div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <form onSubmit={handleSend} className="flex items-center gap-2">
-            <Button
-              type="button"
+          <div className="flex gap-2 items-end">
+            <Button 
               size="icon"
-              variant={isRecording ? "destructive" : "outline"}
-              className={cn("rounded-full flex-shrink-0", isRecording && "animate-pulse")}
-              onClick={handleVoiceInput}
+              variant="outline"
+              disabled={isLoading}
+              onMouseDown={!recording ? handleStartRecording : undefined}
+              onMouseUp={recording ? handleStopRecording : undefined}
+              className={recording ? "bg-red-100" : ""}
             >
-              <Mic className="h-4 w-4" />
+              <Mic className={`h-5 w-5 ${recording ? "text-red-500 animate-pulse" : ""}`} />
             </Button>
             <Input
+              className="flex-1"
+              placeholder="Type your message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isRecording ? `Recording: ${recordingTime}s` : "Type your message..."}
-              className="rounded-full flex-grow"
-              disabled={isRecording}
+              onKeyDown={handleKeyPress}
+              disabled={isLoading}
             />
-            <Button
-              type="submit"
+            <Button 
               size="icon"
-              className="rounded-full flex-shrink-0 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              disabled={isRecording}
+              disabled={isLoading || !input.trim()} 
+              onClick={sendMessage}
             >
-              <Send className="h-4 w-4" />
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
-          </form>
-        </div>
-
-        {errorMessage && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-sm">
-            {errorMessage}
           </div>
-        )}
-      </div>
-    </>
-  )
+        </div>
+      </SheetContent>
+      <audio ref={audioRef} hidden />
+    </Sheet>
+  );
 }
 
+export default Chatbot;
