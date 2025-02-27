@@ -421,7 +421,7 @@ export default function SchemesPage() {
   useEffect(() => {
     // Create a cancellation token source for axios request
     const cancelTokenSource = axios.CancelToken.source()
-
+    
     fetchAllSchemes()
 
     // Clean up function to cancel any pending requests when component unmounts
