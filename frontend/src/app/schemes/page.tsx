@@ -145,81 +145,6 @@ const filters = [
   },
 ]
 
-
-// Replace the existing SchemeDetailModal component with this new one
-// function SchemeDetailModal({ scheme, isOpen, onClose }) {
-//   return (
-//     <Dialog open={isOpen} onOpenChange={onClose}>
-//       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-//         <DialogHeader>
-//           <DialogTitle>{scheme.title}</DialogTitle>
-//           <DialogDescription>{scheme.ministry}</DialogDescription>
-//         </DialogHeader>
-//         <div className="space-y-4">
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Description</h3>
-//             <p>{schemeDetails.details}</p>
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Benefits</h3>
-//             <p>{schemeDetails.benefits.amount}</p>
-//             <h4 className="font-semibold mt-2">Disbursal Process:</h4>
-//             <ul className="list-disc pl-5">
-//               {schemeDetails.benefits.disbursal.map((item, index) => (
-//                 <li key={index}>{item}</li>
-//               ))}
-//             </ul>
-//             <p className="text-sm italic mt-2">{schemeDetails.benefits.note}</p>
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Eligibility</h3>
-//             <ul className="list-disc pl-5">
-//               {schemeDetails.eligibility.map((item, index) => (
-//                 <li key={index}>{item}</li>
-//               ))}
-//             </ul>
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Application Process</h3>
-//             <ol className="list-decimal pl-5">
-//               {schemeDetails.applicationProcess.steps.map((step, index) => (
-//                 <li key={index}>
-//                   <span className="font-semibold">{step.title}:</span> {step.description}
-//                 </li>
-//               ))}
-//             </ol>
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Required Documents</h3>
-//             <ul className="list-disc pl-5">
-//               {schemeDetails.documents.map((doc, index) => (
-//                 <li key={index}>{doc}</li>
-//               ))}
-//             </ul>
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">FAQ</h3>
-//             {schemeDetails.faq.map((item, index) => (
-//               <div key={index} className="mb-3">
-//                 <h4 className="font-semibold">{item.question}</h4>
-//                 <p>{item.answer}</p>
-//               </div>
-//             ))}
-//           </section>
-//           <section>
-//             <h3 className="text-lg font-semibold mb-2">Sources</h3>
-//             <ul className="list-disc pl-5">
-//               {schemeDetails.sources.map((source, index) => (
-//                 <li key={index}>{source}</li>
-//               ))}
-//             </ul>
-//           </section>
-//         </div>
-//       </DialogContent>
-//     </Dialog>
-//   )
-// }
-
 export default function SchemesPage() {
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
@@ -246,7 +171,7 @@ export default function SchemesPage() {
   const [bookmarkedSchemes, setBookmarkedSchemes] = useState([])
 
   // Function to get category emoji
-  const getCategoryEmoji = (category: string) => {
+  const getCategoryEmoji = (category) => {
     const emojiMap = {
       agriculture: "🌾",
       education: "📚",
@@ -255,8 +180,8 @@ export default function SchemesPage() {
       employment: "💼",
       welfare: "🤲",
       financial: "💰",
-      rural: "🏞️",
-      urban: "🏙️",
+      rural: "🏞",
+      urban: "🏙",
     }
     return emojiMap[category?.toLowerCase()] || "📋"
   }
@@ -390,7 +315,7 @@ export default function SchemesPage() {
     }
   }
 
-  // ✅ Debounced search effect (filters apply instantly, but search is delayed)
+  // Debounced search effect (filters apply instantly, but search is delayed)
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery) {
@@ -414,14 +339,16 @@ export default function SchemesPage() {
 
   // Function to handle page change
   const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber)
+    if (pageNumber !== "...") {
+      setCurrentPage(pageNumber)
+    }
   }
 
   // Effect to load schemes on initial render
   useEffect(() => {
     // Create a cancellation token source for axios request
     const cancelTokenSource = axios.CancelToken.source()
-    
+
     fetchAllSchemes()
 
     // Clean up function to cancel any pending requests when component unmounts
@@ -766,77 +693,53 @@ Apply now on MyScheme`
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {/* <AlertTriangle className="h-5 w-5 text-amber-500" /> */}
-                          {/* <div className="text-sm">
-                            <span className="font-medium">{scheme.missingDocuments?.length || 0}</span> documents
-                            missing
-                          </div> */}
-                        </div>
                       </div>
                     </CardContent>
 
                     <CardFooter className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-2 text-blue-600">
                         <Clock className="h-4 w-4" />
-                        <span className="text-sm font-medium">{scheme.deadline}</span>
+                        <span>{scheme.deadline}</span>
                       </div>
-                      <Button onClick={() => setSelectedScheme(scheme)}>View Details</Button>
+                      <Button variant="outline" onClick={() => setSelectedScheme(scheme)}>
+                        View Details
+                      </Button>
                     </CardFooter>
                   </Card>
                 ))}
+              </div>
+            )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-8 flex justify-center">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </Button>
-
-                      {getPageNumbers().map((page, index) =>
-                        page === "..." ? (
-                          <span key={`ellipsis-${index}`} className="px-2">
-                            ...
-                          </span>
-                        ) : (
-                          <Button
-                            key={`page-${page}`}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                          >
-                            {page}
-                          </Button>
-                        ),
-                      )}
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
+            {/* Pagination */}
+            {!loading && displayedSchemes.length > 0 && (
+              <div className="flex justify-center mt-8">
+                <nav className="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                  {getPageNumbers().map((pageNumber, index) => (
+                    <Button
+                      key={index}
+                      variant={pageNumber === currentPage ? "default" : "outline"}
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={`px-4 py-2 ${pageNumber === "..." ? "cursor-default" : ""}`}
+                      disabled={pageNumber === "..."}
+                    >
+                      {pageNumber}
+                    </Button>
+                  ))}
+                </nav>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {selectedScheme && <SchemeDetailModal scheme={selectedScheme} onClose={() => setSelectedScheme(null)} />}
+      {/* Detail Modal */}
+      {selectedScheme && (
+        <SchemeDetailModal
+          scheme={selectedScheme}
+          isOpen={!!selectedScheme}
+          onClose={() => setSelectedScheme(null)}
+        />
+      )}
     </div>
   )
 }
-
-//just fix lag in filters
-
