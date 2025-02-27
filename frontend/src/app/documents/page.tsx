@@ -45,9 +45,9 @@ export default function HomePage() {
                     >
                       Sign In
                     </Button>
-                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                    {/* <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
                       Sign Up
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
                 <div className="w-24 h-24 bg-[#1E3A8A] rounded-full flex items-center justify-center">
