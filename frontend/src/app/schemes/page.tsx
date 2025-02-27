@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, Search, Share2, AlertTriangle, Clock, Building2, Users, MoreVertical, Bookmark } from "lucide-react"
+import { ArrowLeft, Search, Share2, Clock, Building2, Users, MoreVertical, Bookmark } from "lucide-react"
 import Link from "next/link"
 import axios from "axios"
 import { Button } from "@/components/ui/button"
@@ -11,16 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
-import { SchemeDetailModal } from "@/components/scheme-detail-modal"
+import { SchemeDetailModal } from "@/components/schemes-detail-modal"
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:4000/api',
+  baseURL: "http://localhost:4000/api",
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
-  }
-});
+    "Content-Type": "application/json",
+  },
+})
 
 interface Scheme {
   id: string
@@ -44,7 +44,7 @@ interface Scheme {
   // missingDocuments?: string[]
   emoji?: string
   rating?: number
-  reviews?: number 
+  reviews?: number
 }
 
 const filters = [
@@ -145,8 +145,80 @@ const filters = [
   },
 ]
 
-// Sample scheme details for the modal (will be replaced with API data)
-const schemeDetails = {}
+
+// Replace the existing SchemeDetailModal component with this new one
+// function SchemeDetailModal({ scheme, isOpen, onClose }) {
+//   return (
+//     <Dialog open={isOpen} onOpenChange={onClose}>
+//       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+//         <DialogHeader>
+//           <DialogTitle>{scheme.title}</DialogTitle>
+//           <DialogDescription>{scheme.ministry}</DialogDescription>
+//         </DialogHeader>
+//         <div className="space-y-4">
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Description</h3>
+//             <p>{schemeDetails.details}</p>
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Benefits</h3>
+//             <p>{schemeDetails.benefits.amount}</p>
+//             <h4 className="font-semibold mt-2">Disbursal Process:</h4>
+//             <ul className="list-disc pl-5">
+//               {schemeDetails.benefits.disbursal.map((item, index) => (
+//                 <li key={index}>{item}</li>
+//               ))}
+//             </ul>
+//             <p className="text-sm italic mt-2">{schemeDetails.benefits.note}</p>
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Eligibility</h3>
+//             <ul className="list-disc pl-5">
+//               {schemeDetails.eligibility.map((item, index) => (
+//                 <li key={index}>{item}</li>
+//               ))}
+//             </ul>
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Application Process</h3>
+//             <ol className="list-decimal pl-5">
+//               {schemeDetails.applicationProcess.steps.map((step, index) => (
+//                 <li key={index}>
+//                   <span className="font-semibold">{step.title}:</span> {step.description}
+//                 </li>
+//               ))}
+//             </ol>
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Required Documents</h3>
+//             <ul className="list-disc pl-5">
+//               {schemeDetails.documents.map((doc, index) => (
+//                 <li key={index}>{doc}</li>
+//               ))}
+//             </ul>
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">FAQ</h3>
+//             {schemeDetails.faq.map((item, index) => (
+//               <div key={index} className="mb-3">
+//                 <h4 className="font-semibold">{item.question}</h4>
+//                 <p>{item.answer}</p>
+//               </div>
+//             ))}
+//           </section>
+//           <section>
+//             <h3 className="text-lg font-semibold mb-2">Sources</h3>
+//             <ul className="list-disc pl-5">
+//               {schemeDetails.sources.map((source, index) => (
+//                 <li key={index}>{source}</li>
+//               ))}
+//             </ul>
+//           </section>
+//         </div>
+//       </DialogContent>
+//     </Dialog>
+//   )
+// }
 
 export default function SchemesPage() {
   const searchParams = useSearchParams()
@@ -159,7 +231,7 @@ export default function SchemesPage() {
   const [itemsPerPage] = useState(10)
   const [totalSchemes, setTotalSchemes] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  
+
   const [selectedFilters, setSelectedFilters] = useState(() => {
     const initialFilters = Object.fromEntries(filters.map((filter) => [filter.id, filter.options[0]]))
     const category = searchParams.get("category")
@@ -168,23 +240,23 @@ export default function SchemesPage() {
     }
     return initialFilters
   })
-  
+
   const [sortOrder, setSortOrder] = useState("a-z")
   const [selectedScheme, setSelectedScheme] = useState(null)
   const [bookmarkedSchemes, setBookmarkedSchemes] = useState([])
 
   // Function to get category emoji
-  const getCategoryEmoji = (category) => {
+  const getCategoryEmoji = (category: string) => {
     const emojiMap = {
-      "agriculture": "🌾",
-      "education": "📚",
-      "health": "🏥",
-      "housing": "🏠",
-      "employment": "💼",
-      "welfare": "🤲",
-      "financial": "💰",
-      "rural": "🏞️",
-      "urban": "🏙️"
+      agriculture: "🌾",
+      education: "📚",
+      health: "🏥",
+      housing: "🏠",
+      employment: "💼",
+      welfare: "🤲",
+      financial: "💰",
+      rural: "🏞️",
+      urban: "🏙️",
     }
     return emojiMap[category?.toLowerCase()] || "📋"
   }
@@ -192,26 +264,30 @@ export default function SchemesPage() {
   // Parse documents requirements into an array
   const parseDocuments = (docString) => {
     if (!docString) return []
-    return docString.split(';').map(doc => doc.trim()).filter(Boolean)
+    return docString
+      .split(";")
+      .map((doc) => doc.trim())
+      .filter(Boolean)
   }
 
   // Function to transform API data to match frontend Scheme interface
   const transformSchemeData = (data) => {
     return data.map((scheme, index) => ({
       id: scheme._id?.$oid || index.toString(),
-      ministry: scheme.ministry ,
+      ministry: scheme.ministry,
       title: scheme.title || "Untitled Scheme",
       description: scheme.description || "No description available",
       state: scheme.state || undefined,
       visits: Math.floor(Math.random() * 10000),
       tags: [scheme.tag1, scheme.tag2, scheme.tag3, scheme.tag4, scheme.tag5].filter(Boolean),
+
       grant: `₹${scheme.benefits || 10}`,
       eligibilityPercentage: Math.floor(Math.random() * 30) + 70, // Random between 70-100%
       statistics: {
         beneficiaries: scheme.benefits ? `${Math.floor(Math.random() * 1000) + 500},000` : "N/A",
         disbursed: scheme.benefits ? `₹${Math.floor(Math.random() * 100) + 10} Crore` : "N/A",
       },
-      deadline: Math.floor(Math.random()*100)+" days left to apply",
+      deadline: Math.floor(Math.random() * 100) + " days left to apply",
       missingDocuments: parseDocuments(scheme.docReq).slice(0, 2),
       emoji: getCategoryEmoji(scheme.Category),
       rating: (Math.random() * 1.5 + 3.5).toFixed(1),
@@ -223,9 +299,9 @@ export default function SchemesPage() {
   const fetchAllSchemes = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/schemes/all')
+      const response = await api.get("/schemes/all")
       const data = response.data
-      
+      console.log(data)
       // Transform backend data to match frontend Scheme interface
       const transformedData = transformSchemeData(data)
       setAllSchemes(transformedData)
@@ -245,21 +321,21 @@ export default function SchemesPage() {
   const searchSchemes = async (keyword) => {
     try {
       setLoading(true)
-      const response = await api.get('/schemes/bykey', {
+      const response = await api.get("/schemes/bykey", {
         params: {
           keyword,
           page: currentPage,
-          limit: itemsPerPage
-        }
+          limit: itemsPerPage,
+        },
       })
       const data = response.data
-      
+
       // Transform backend data to match frontend Scheme interface
       const transformedData = transformSchemeData(data)
       setAllSchemes(transformedData)
       setTotalSchemes(transformedData.length)
       setTotalPages(Math.ceil(transformedData.length / itemsPerPage))
-      
+
       // Don't reset current page if using pagination
       if (!keyword) {
         setCurrentPage(1) // Reset to first page on new search only
@@ -276,20 +352,20 @@ export default function SchemesPage() {
 
   // Function to filter schemes based on selected filters
   const filterSchemes = (filters = selectedFilters) => {
-    const state = filters.state !== "All States" ? filters.state : null;
-    const gender = filters.gender !== "All" ? filters.gender : null;
-    const caste = filters.caste !== "All" ? filters.caste : null;
-    const level = filters.level !== "All Levels" ? filters.level : null;
-    const residence = filters.residence !== "All" ? filters.residence : null;
-    const minority = filters.minority !== "All" ? filters.minority : null;
-    const differentlyAbled = filters["differently-abled"] !== "All" ? filters["differently-abled"] : null;
-    const benefitType = filters["benefit-type"] !== "All Types" ? filters["benefit-type"] : null;
-    const dbtScheme = filters["dbt-scheme"] !== "All" ? "DBT" : null;
-    const maritalStatus = filters["marital-status"] !== "All" ? filters["marital-status"] : null;
-    const belowPovertyLine = filters["below-poverty-line"] !== "All" ? filters["below-poverty-line"] : null;
-    const occupation = filters.occupation !== "All" ? filters.occupation : null;
-    const student = filters.student !== "All" ? "Student" : null;
-  
+    const state = filters.state !== "All States" ? filters.state : null
+    const gender = filters.gender !== "All" ? filters.gender : null
+    const caste = filters.caste !== "All" ? filters.caste : null
+    const level = filters.level !== "All Levels" ? filters.level : null
+    const residence = filters.residence !== "All" ? filters.residence : null
+    const minority = filters.minority !== "All" ? filters.minority : null
+    const differentlyAbled = filters["differently-abled"] !== "All" ? filters["differently-abled"] : null
+    const benefitType = filters["benefit-type"] !== "All Types" ? filters["benefit-type"] : null
+    const dbtScheme = filters["dbt-scheme"] !== "All" ? "DBT" : null
+    const maritalStatus = filters["marital-status"] !== "All" ? filters["marital-status"] : null
+    const belowPovertyLine = filters["below-poverty-line"] !== "All" ? filters["below-poverty-line"] : null
+    const occupation = filters.occupation !== "All" ? filters.occupation : null
+    const student = filters.student !== "All" ? "Student" : null
+
     const keywordFromFilters =
       state ||
       gender ||
@@ -303,61 +379,61 @@ export default function SchemesPage() {
       maritalStatus ||
       belowPovertyLine ||
       occupation ||
-      student;
-  
+      student
+
     if (keywordFromFilters) {
-      searchSchemes(keywordFromFilters);
+      searchSchemes(keywordFromFilters)
     } else if (searchQuery) {
-      searchSchemes(searchQuery);
+      searchSchemes(searchQuery)
     } else {
-      fetchAllSchemes();
+      fetchAllSchemes()
     }
-  };
-  
+  }
+
   // ✅ Debounced search effect (filters apply instantly, but search is delayed)
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery) {
-        searchSchemes(searchQuery);
+        searchSchemes(searchQuery)
       }
-    }, 500);
-  
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+    }, 500)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchQuery])
 
   useEffect(() => {
-    getPaginatedSchemes();
-  }, [allSchemes, currentPage]);  
+    getPaginatedSchemes()
+  }, [allSchemes, currentPage])
 
   // Apply pagination to get current schemes
   const getPaginatedSchemes = () => {
-    const indexOfLastScheme = currentPage * itemsPerPage;
-    const indexOfFirstScheme = indexOfLastScheme - itemsPerPage;
-    setDisplayedSchemes(allSchemes.slice(indexOfFirstScheme, indexOfLastScheme));
+    const indexOfLastScheme = currentPage * itemsPerPage
+    const indexOfFirstScheme = indexOfLastScheme - itemsPerPage
+    setDisplayedSchemes(allSchemes.slice(indexOfFirstScheme, indexOfLastScheme))
   }
 
   // Function to handle page change
   const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
+    setCurrentPage(pageNumber)
   }
 
   // Effect to load schemes on initial render
   useEffect(() => {
     // Create a cancellation token source for axios request
     const cancelTokenSource = axios.CancelToken.source()
-    
+
     fetchAllSchemes()
-    
+
     // Clean up function to cancel any pending requests when component unmounts
     return () => {
-      cancelTokenSource.cancel('Component unmounted')
+      cancelTokenSource.cancel("Component unmounted")
     }
   }, [])
 
   // Effect to handle search changes
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source()
-    
+
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery) {
         searchSchemes(searchQuery)
@@ -368,51 +444,51 @@ export default function SchemesPage() {
 
     return () => {
       clearTimeout(delayDebounceFn)
-      cancelTokenSource.cancel('New search initiated')
+      cancelTokenSource.cancel("New search initiated")
     }
   }, [searchQuery])
 
   // Effect to handle filter changes
   useEffect(() => {
     const cancelTokenSource = axios.CancelToken.source()
-    
+
     filterSchemes()
-    
+
     return () => {
-      cancelTokenSource.cancel('Filter changed')
+      cancelTokenSource.cancel("Filter changed")
     }
   }, [selectedFilters])
 
   // Effect to handle sort order
   useEffect(() => {
-    if (allSchemes.length === 0) return;
-    
-    const sortedSchemes = [...allSchemes];
-    
+    if (allSchemes.length === 0) return
+
+    const sortedSchemes = [...allSchemes]
+
     switch (sortOrder) {
       case "a-z":
-        sortedSchemes.sort((a, b) => a.title.localeCompare(b.title));
-        break;
+        sortedSchemes.sort((a, b) => a.title.localeCompare(b.title))
+        break
       case "z-a":
-        sortedSchemes.sort((a, b) => b.title.localeCompare(a.title));
-        break;
+        sortedSchemes.sort((a, b) => b.title.localeCompare(a.title))
+        break
       case "visits":
-        sortedSchemes.sort((a, b) => b.visits - a.visits);
-        break;
+        sortedSchemes.sort((a, b) => b.visits - a.visits)
+        break
       case "rating":
-        sortedSchemes.sort((a, b) => b.rating - a.rating);
-        break;
+        sortedSchemes.sort((a, b) => b.rating - a.rating)
+        break
       default:
-        break;
+        break
     }
-    
-    setAllSchemes(sortedSchemes);
-  }, [sortOrder]);
+
+    setAllSchemes(sortedSchemes)
+  }, [sortOrder])
 
   // Effect to update displayed schemes when page changes or all schemes change
   useEffect(() => {
-    getPaginatedSchemes();
-  }, [currentPage, allSchemes]);
+    getPaginatedSchemes()
+  }, [currentPage, allSchemes])
 
   const handleShare = async (scheme) => {
     const shareText = `Check out ${scheme.title} - ${scheme.grant}
@@ -441,16 +517,16 @@ Apply now on MyScheme`
       const updatedFilters = {
         ...prevFilters,
         [filterId]: value,
-      };
-  
-      setCurrentPage(1); // Reset to first page when filters change
-      return updatedFilters;
-    });
-  };
+      }
+
+      setCurrentPage(1) // Reset to first page when filters change
+      return updatedFilters
+    })
+  }
 
   useEffect(() => {
-    filterSchemes(selectedFilters);
-  }, [selectedFilters]);
+    filterSchemes(selectedFilters)
+  }, [selectedFilters])
 
   const resetFilters = () => {
     const resetFilters = Object.fromEntries(filters.map((filter) => [filter.id, filter.options[0]]))
@@ -462,44 +538,44 @@ Apply now on MyScheme`
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisibleButtons = 5;
-    
+    const pageNumbers = []
+    const maxVisibleButtons = 5
+
     // Show just a few buttons with ellipsis for many pages
     if (totalPages <= maxVisibleButtons) {
       // Show all page numbers
       for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
+        pageNumbers.push(i)
       }
     } else {
       // Always show first page
-      pageNumbers.push(1);
-      
+      pageNumbers.push(1)
+
       if (currentPage > 2) {
         // Show ellipsis after first page if current page is not near the beginning
-        pageNumbers.push('...');
+        pageNumbers.push("...")
       }
-      
+
       // Show current page and neighbors
-      const startPage = Math.max(2, currentPage - 1);
-      const endPage = Math.min(totalPages - 1, currentPage + 1);
-      
+      const startPage = Math.max(2, currentPage - 1)
+      const endPage = Math.min(totalPages - 1, currentPage + 1)
+
       for (let i = startPage; i <= endPage; i++) {
-        if (i === 1 || i === totalPages) continue; // Skip first and last which are always shown
-        pageNumbers.push(i);
+        if (i === 1 || i === totalPages) continue // Skip first and last which are always shown
+        pageNumbers.push(i)
       }
-      
+
       if (currentPage < totalPages - 1) {
         // Show ellipsis before last page if current page is not near the end
-        pageNumbers.push('...');
+        pageNumbers.push("...")
       }
-      
+
       // Always show last page
-      pageNumbers.push(totalPages);
+      pageNumbers.push(totalPages)
     }
-    
-    return pageNumbers;
-  };
+
+    return pageNumbers
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -530,19 +606,15 @@ Apply now on MyScheme`
           <div className="w-64 flex-shrink-0">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Filters</h2>
-              <Button
-                variant="link"
-                className="text-blue-600 hover:text-blue-700 p-0 h-auto"
-                onClick={resetFilters}
-              >
+              <Button variant="link" className="text-blue-600 hover:text-blue-700 p-0 h-auto" onClick={resetFilters}>
                 Reset
               </Button>
             </div>
             <Accordion type="multiple" className="space-y-2">
               {filters.map((filter) => (
-                <AccordionItem 
-                  key={filter.id} 
-                  value={filter.id} 
+                <AccordionItem
+                  key={filter.id}
+                  value={filter.id}
                   className={`border rounded-lg ${
                     selectedFilters[filter.id] !== filter.options[0] ? "border-blue-500 bg-blue-50" : ""
                   }`}
@@ -726,10 +798,12 @@ Apply now on MyScheme`
                       >
                         Previous
                       </Button>
-                      
-                      {getPageNumbers().map((page, index) => (
-                        page === '...' ? (
-                          <span key={`ellipsis-${index}`} className="px-2">...</span>
+
+                      {getPageNumbers().map((page, index) =>
+                        page === "..." ? (
+                          <span key={`ellipsis-${index}`} className="px-2">
+                            ...
+                          </span>
                         ) : (
                           <Button
                             key={`page-${page}`}
@@ -739,9 +813,9 @@ Apply now on MyScheme`
                           >
                             {page}
                           </Button>
-                        )
-                      ))}
-                      
+                        ),
+                      )}
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -759,19 +833,10 @@ Apply now on MyScheme`
         </div>
       </div>
 
-      {/* Scheme Detail Modal */}
-      {selectedScheme && (
-        <SchemeDetailModal
-          scheme={selectedScheme}
-          isOpen={!!selectedScheme}
-          onClose={() => setSelectedScheme(null)}
-        />
-      )}
+      {selectedScheme && <SchemeDetailModal scheme={selectedScheme} onClose={() => setSelectedScheme(null)} />}
     </div>
   )
 }
 
-
 //just fix lag in filters
-
 
