@@ -381,3 +381,4 @@ export function SchemeDetailModal({ scheme = defaultScheme, onClose }: SchemeDet
   )
 }
 
+export default SchemeDetailModal
