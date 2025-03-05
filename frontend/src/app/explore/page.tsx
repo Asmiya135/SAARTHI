@@ -2,7 +2,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-
+import ChatbotWidget from "@/components/chatbotWidget"
 export default function ExplorePage() {
   const popularDocuments = [
     {
@@ -171,6 +171,7 @@ export default function ExplorePage() {
                 <h3 className="font-medium">{doc.title}</h3>
                 <p className="text-sm text-gray-500">{doc.institution}</p>
               </div>
+              {/* <ChatbotWidget/> */}
             </div>
           ))}
         </div>

@@ -8,6 +8,7 @@ import DocumentsSection from "@/components/documents-section"
 import SignInModal from "@/components/sign-in-modal"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
+import ChatbotWidget from "@/components/chatbotWidget"
 
 export default function HomePage() {
   const [showSignIn, setShowSignIn] = useState(false)
@@ -45,9 +46,6 @@ export default function HomePage() {
                     >
                       Sign In
                     </Button>
-                    {/* <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
-                      Sign Up
-                    </Button> */}
                   </div>
                 </div>
                 <div className="w-24 h-24 bg-[#1E3A8A] rounded-full flex items-center justify-center">
@@ -66,6 +64,9 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Chatbot Widget */}
+      <ChatbotWidget />
 
       <SignInModal isOpen={showSignIn} onClose={() => setShowSignIn(false)} />
     </div>
