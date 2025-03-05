@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { SchemeDetailModal } from "@/components/schemes-detail-modal"
-
+import ChatbotWidget from "@/components/chatbotWidget"
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: "http://localhost:4000/api",
@@ -701,6 +701,7 @@ Apply now on MyScheme`
                         <Clock className="h-4 w-4" />
                         <span>{scheme.deadline}</span>
                       </div>
+                      {/* <ChatbotWidget/> */}
                       <Button variant="outline" onClick={() => setSelectedScheme(scheme)}>
                         View Details
                       </Button>

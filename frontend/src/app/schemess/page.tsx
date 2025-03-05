@@ -10,7 +10,7 @@ import { LocationPermissionDialog } from "@/components/location-permission-dialo
 import { BookmarkedSchemes } from "../../components/bookmarked-schemes"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
-
+import ChatbotWidget from "@/components/chatbotWidget"
 export default function Page() {
   const [bookmarkedSchemes, setBookmarkedSchemes] = useState<string[]>([])
   const [showLocationDialog, setShowLocationDialog] = useState(false)
@@ -48,7 +48,7 @@ export default function Page() {
               <SchemeExplorer />
             </div>
           </div>
-
+          <ChatbotWidget/>
           <LocationPermissionDialog
             open={showLocationDialog}
             onOpenChange={(open) => {

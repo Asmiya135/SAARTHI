@@ -8,6 +8,8 @@ import { RecentActivities } from "@/components/recent-activities"
 import { MonthlyEarnings } from "@/components/monthly-earnings"
 import { LocalCenters } from "@/components/local-centers"
 import Chatbot from "@/components/chatbot"
+import Hatbot from "@/components/hatbot"
+import ChatbotWidget from "@/components/chatbotWidget"
 
 export default function HomePage() {
   return (
@@ -39,8 +41,9 @@ export default function HomePage() {
           </div>
         </main>
       </div>
-
-      <Chatbot />
+      {/* <Hatbot/>
+      <Chatbot /> */}
+      <ChatbotWidget/>
     </div>
   )
 }
