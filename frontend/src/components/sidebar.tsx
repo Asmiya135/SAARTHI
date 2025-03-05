@@ -9,10 +9,8 @@ const sidebarItems = [
   { name: "Home", icon: Home, href: "/" },
   { name: "Schemes", icon: Layers, href: "/schemess" },
   { name: "Maharashtra", icon: MapPin, href: "/maharashtra" },
-  
   { name: "Documents", icon: FileText, href: "/documents" },
- 
-
+  { name: "Consumer Service Center", icon: Layers, href: "/csc" },
 ]
 
 export function Sidebar() {

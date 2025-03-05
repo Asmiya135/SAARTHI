@@ -28,7 +28,7 @@ memory = ConversationBufferWindowMemory(k=5)
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
     temperature=0.5,
-    google_api_key="AIzaSyBZuDWwC9QC6BortBUgRNN0Z_s23wxpCb4"  # Replace with your actual Gemini API key
+    google_api_key="AIzaSyAoEO5jsHAZhlYKefM7QP6saQOgPtlvHS8"  # Replace with your actual Gemini API key
 )
 
 # Schema description and prompt
