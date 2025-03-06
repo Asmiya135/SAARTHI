@@ -846,7 +846,7 @@ const Page = () => {
     }
   }, []);
 
-  // Initialize map
+  // Initialize map with improved layer styling (fixed to use only supported API methods)
   useEffect(() => {
     import('olamaps-web-sdk').then((module) => {
       const { OlaMaps } = module;
@@ -870,6 +870,7 @@ const Page = () => {
         showCompass: true,
         showZoom: true,
         visualizePitch: true,
+        position: 'top-right'
       });
       
       myMap.addControl(navigationControls);
@@ -878,6 +879,19 @@ const Page = () => {
       myMap.on("load", () => {
         addMarkers(olaMapInstance, myMap);
         addUserMarker(olaMapInstance, myMap);
+        
+        // Add a map attribution control (built into maplibregl)
+        if (myMap.addControl && typeof myMap.addControl === 'function') {
+          try {
+            // Add built-in attribution control
+            const attributionControl = new (window as any).maplibregl.AttributionControl({
+              compact: true
+            });
+            myMap.addControl(attributionControl, 'bottom-right');
+          } catch (error) {
+            console.error("Error adding attribution control:", error);
+          }
+        }
       });
     });
   }, [currentLocation]);
@@ -886,8 +900,14 @@ const Page = () => {
   const clearRoute = () => {
     if (map) {
       try {
-        // First remove the layer if it exists
-        if (routeLayer && map.getLayer(routeLayer)) {
+        // Remove all layers associated with route
+        if (Array.isArray(routeLayer)) {
+          routeLayer.forEach(layerId => {
+            if (map.getLayer(layerId)) {
+              map.removeLayer(layerId);
+            }
+          });
+        } else if (routeLayer && map.getLayer(routeLayer)) {
           map.removeLayer(routeLayer);
         }
         
@@ -1188,7 +1208,7 @@ const Page = () => {
           }
         });
         
-        // Add the route line layer
+        // Add the route line layer with improved styling
         map.addLayer({
           id: 'route-line',
           type: 'line',
@@ -1198,14 +1218,31 @@ const Page = () => {
             'line-cap': 'round'
           },
           paint: {
-            'line-color': '#0078d4',
+            'line-color': '#00A86B', // Green color for better visibility
             'line-width': 6,
             'line-opacity': 0.8
           }
         });
+
+        // Add a glow effect with a second line
+        map.addLayer({
+          id: 'route-glow',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#64DD17',
+            'line-width': 10,
+            'line-opacity': 0.3,
+            'line-blur': 3
+          }
+        }, 'route-line');
         
-        // Save reference to remove later
-        setRouteLayer('route-line');
+        // Save references to remove later
+        setRouteLayer(['route-line', 'route-glow']);
       } else {
         // Update existing source with new route data
         map.getSource('route').setData({
@@ -1296,7 +1333,7 @@ const Page = () => {
     }
   };
 
-  // Add markers when map is loaded
+  // Add custom styled markers for CSC locations
   const addMarkers = (olaMapInstance: any, mapInstance: any) => {
     if (!olaMapInstance || !mapInstance) return;
     
@@ -1306,23 +1343,60 @@ const Page = () => {
     
     // Add markers for each location
     filteredLocations.forEach((location) => {
-      // Create popup for this location
+      // Create popup for this location with improved styling
       const popup = olaMapInstance
         .addPopup({ offset: [0, -15] })
         .setHTML(`
-          <div style="padding: 12px; max-width: 250px;">
-            <h3 style="margin-top: 0; color: #1a3a5f;">${location.name}</h3>
-            <p style="margin: 5px 0;"><strong>Address:</strong> ${location.address}</p>
-            <p style="margin: 5px 0;">${location.description}</p>
-            <p style="margin: 5px 0;"><strong>Services:</strong> ${location.services.join(', ')}</p>
-            <p style="margin: 5px 0;"><strong>District:</strong> ${location.district}, ${location.state}</p>
+          <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
+            ${location.imageUrl ? `
+              <div style="margin: 10px 0; width: 100%; height: 120px; overflow: hidden; border-radius: 6px;">
+                <img src="${location.imageUrl}" alt="${location.name}" 
+                     style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+            ` : ''}
+            <p style="margin: 8px 0; font-weight: 500;"><strong>Address:</strong> ${location.address}</p>
+            <p style="margin: 8px 0; color: #555;">${location.description}</p>
+            <div style="margin: 10px 0;">
+              <strong>Services:</strong>
+              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                ${location.services.map(service => 
+                  `<span style="background: #e8f5e9; color: #2e7d32; padding: 3px 8px; 
+                   border-radius: 4px; font-size: 12px;">${service}</span>`
+                ).join('')}
+              </div>
+            </div>
+            <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
+            <button onclick="document.dispatchEvent(new CustomEvent('getDirections', {detail: ${location.id}}))" 
+                    style="background: #00A86B; color: white; border: none; padding: 8px 16px; 
+                    border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
+              Get Directions
+            </button>
           </div>
         `);
       
-      // Add marker
+      // Create custom marker element for CSC location
+      const el = document.createElement('div');
+      
+      // Apply styles directly to marker element
+      el.style.width = '32px';
+      el.style.height = '42px';
+      el.style.backgroundImage = selectedLocation === location.id ? 
+        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%23FF3E4D\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")' : 
+        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%2300A86B\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")';
+      el.style.backgroundSize = 'contain';
+      el.style.backgroundRepeat = 'no-repeat';
+      el.style.cursor = 'pointer';
+      
+      // Add animation for selected markers
+      if (selectedLocation === location.id) {
+        el.style.animation = 'bounce 0.5s ease infinite alternate';
+      }
+      
+      // Add marker with custom element
       const marker = olaMapInstance
         .addMarker({ 
-          color: selectedLocation === location.id ? '#ff0000' : '#3FB1CE',
+          element: el,
           offset: [0, 0], 
           anchor: 'bottom' 
         })
@@ -1343,9 +1417,15 @@ const Page = () => {
     });
     
     setMarkers(newMarkers);
+    
+    // Add event listener for "Get Directions" button in popups
+    document.addEventListener('getDirections', (e: any) => {
+      const locationId = e.detail;
+      handleShowDirections(locationId);
+    });
   };
-  
-  // Add user location marker
+
+  // Add user location marker with improved styling - using green colors
   const addUserMarker = (olaMapInstance: any, mapInstance: any) => {
     if (!olaMapInstance || !mapInstance || !currentLocation) return;
     
@@ -1353,23 +1433,33 @@ const Page = () => {
       userMarker.remove();
     }
     
-    // Create popup for user location
+    // Create popup for user location with improved styling
     const popup = olaMapInstance
       .addPopup({ offset: [0, -15] })
       .setHTML(`
-        <div style="padding: 10px; max-width: 200px;">
-          <h3 style="margin-top: 0; color: #1a3a5f;">Your Location</h3>
-          <p style="margin: 5px 0;">This is your current position</p>
+        <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <h3 style="margin-top: 0; color: #00A86B; font-weight: 600;">Your Location</h3>
+          <p style="margin: 5px 0; color: #333;">This is your current position</p>
         </div>
       `);
     
-    // Create marker element with custom style
+    // Custom marker element with green styling
     const el = document.createElement('div');
     el.className = styles.userMarker;
-    el.innerHTML = `
-      <div class="${styles.userMarkerDot}"></div>
-      <div class="${styles.userMarkerPulse}"></div>
-    `;
+    
+    // Create inner elements for the user marker with explicit styles
+    const dotElement = document.createElement('div');
+    dotElement.className = styles.userMarkerDot;
+    dotElement.style.backgroundColor = '#00A86B'; // Green dot
+    dotElement.style.border = '2px solid white';
+    
+    const pulseElement = document.createElement('div');
+    pulseElement.className = styles.userMarkerPulse;
+    pulseElement.style.backgroundColor = 'rgba(0, 168, 107, 0.3)'; // Green pulse with transparency
+    
+    // Append children to marker element
+    el.appendChild(dotElement);
+    el.appendChild(pulseElement);
     
     // Add marker
     const marker = olaMapInstance
@@ -1452,6 +1542,7 @@ const Page = () => {
                 id="state"
                 value={filters.state}
                 onChange={(e) => handleFilterChange('state', e.target.value)}
+                className={styles.selectInput}
               >
                 <option value="">All States</option>
                 {states.map(state => (
@@ -1466,6 +1557,7 @@ const Page = () => {
                 id="district"
                 value={filters.district}
                 onChange={(e) => handleFilterChange('district', e.target.value)}
+                className={styles.selectInput}
               >
                 <option value="">All Districts</option>
                 {districts.map(district => (
@@ -1480,6 +1572,7 @@ const Page = () => {
                 id="subdistrict"
                 value={filters.subdistrict}
                 onChange={(e) => handleFilterChange('subdistrict', e.target.value)}
+                className={styles.selectInput}
               >
                 <option value="">All Subdistricts</option>
                 {subdistricts.map(subdistrict => (
@@ -1494,6 +1587,7 @@ const Page = () => {
                 id="village"
                 value={filters.village}
                 onChange={(e) => handleFilterChange('village', e.target.value)}
+                className={styles.selectInput}
               >
                 <option value="">All Villages</option>
                 {villages.map(village => (
@@ -1575,6 +1669,7 @@ const Page = () => {
                         onFocus={() => {
                           if (searchResults.length > 0) setShowSearchDropdown(true);
                         }}
+                        className={styles.searchInput}
                       />
                       {isSearching && <span className={styles.searchingIndicator}>Searching...</span>}
                       
@@ -1611,6 +1706,7 @@ const Page = () => {
               
               {isRouteFetching && (
                 <div className={styles.loadingRoute}>
+                  <div className={styles.spinner}></div>
                   <p>Finding the best route...</p>
                 </div>
               )}
@@ -1632,7 +1728,7 @@ const Page = () => {
                     </div>
                   </div>
                   <div className={styles.routeTips}>
-                    <p>Route shown on map. Follow the blue line to reach your destination.</p>
+                    <p>Follow the green route to reach your destination.</p>
                   </div>
                 </div>
               )}
