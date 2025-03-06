@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload, AlertTriangle, CheckCircle } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface UploadModalProps {
 const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
   const [extractedInfo, setExtractedInfo] = useState<Record<string, string> | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [comparisonResult, setComparisonResult] = useState<any>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -27,6 +28,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
     try {
       setUploading(true);
       setExtractedInfo(null); // Clear previous data
+      setComparisonResult(null); // Clear previous comparison results
 
       const response = await axios.post("http://localhost:4000/api/user/uploads", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -34,21 +36,54 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
 
       console.log("API Response:", response.data); // Debug API response
 
-      let extractedText = response.data.extracted_text || "";
-      const extractedData: Record<string, string> = {};
+      // Parse the extracted_info from API response
+      let extractedInfoStr = response.data.extracted_info || "";
+      try {
+        // Try to parse as JSON first
+        const parsedInfo = JSON.parse(extractedInfoStr);
+        const extractedData: Record<string, string> = {};
+        
+        // Convert the JSON object to key-value pairs for display
+        Object.entries(parsedInfo).forEach(([key, value]) => {
+          extractedData[key] = String(value);
+        });
+        
+        setExtractedInfo(extractedData);
+      } catch (e) {
+        // If not valid JSON, try to parse as text (fallback)
+        const extractedData: Record<string, string> = {};
+        extractedInfoStr.split("\n").forEach((line) => {
+          const parts = line.split(":");
+          if (parts.length === 2) {
+            const key = parts[0].trim();
+            const value = parts[1].trim().replace(/[^a-zA-Z0-9\s-]/g, "");
+            extractedData[key] = value;
+          }
+        });
+        setExtractedInfo(extractedData);
+      }
 
-      // Extract key-value pairs properly
-      extractedText.split("\n").forEach((line) => {
-        const parts = line.split(":"); // Split by :
-        if (parts.length === 2) {
-          const key = parts[0].trim(); // Remove extra spaces
-          const value = parts[1].trim().replace(/[^a-zA-Z0-9\s-]/g, ""); // Remove unwanted characters
-          extractedData[key] = value;
+      // Process and save the comparison result
+      if (response.data.comparison_result) {
+        let result = response.data.comparison_result;
+        
+        // Check if we need to parse the message (it might contain the JSON inside a code block)
+        if (typeof result.message === 'string' && result.message.includes('```json')) {
+          try {
+            // Extract and parse JSON from markdown code block if present
+            const jsonMatch = result.message.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+              const parsedResult = JSON.parse(jsonMatch[1].trim());
+              // Merge with the existing result
+              result = { ...result, ...parsedResult };
+            }
+          } catch (e) {
+            console.error("Error parsing JSON from message:", e);
+          }
         }
-      });
-
-      console.log("Extracted Info:", extractedData); // Debug extracted info
-      setExtractedInfo(extractedData);
+        
+        setComparisonResult(result);
+      }
     } catch (error) {
       console.error("Upload failed:", error);
       setExtractedInfo({ Error: "Failed to process the document. Try again." });
@@ -59,7 +94,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     console.log("Updated Extracted Info:", extractedInfo);
-  }, [extractedInfo]);
+    console.log("Comparison Result:", comparisonResult);
+  }, [extractedInfo, comparisonResult]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -132,22 +168,53 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
                 <p>Upload a document to see extracted information</p>
               </div>
             )}
-            {/* AI Suggestion Notification (Only Shown If Table Exists) */}
+            
+            {/* AI Suggestion Notification */}
             {extractedInfo && Object.keys(extractedInfo).length > 0 && (
-              <div className="mt-6 p-4 border border-yellow-400 bg-yellow-100 text-yellow-900 rounded-lg shadow-md">
+              <div className={cn(
+                "mt-6 p-4 border rounded-lg shadow-md",
+                comparisonResult?.isMatch 
+                  ? "border-green-400 bg-green-100 text-green-900" 
+                  : "border-yellow-400 bg-yellow-100 text-yellow-900"
+              )}>
                 <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
+                  {comparisonResult?.isMatch ? (
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  ) : (
+                    <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                  )}
                   <h4 className="text-lg font-semibold">AI Suggestion:</h4>
                 </div>
-                <p className="mt-2 text-sm">
-                  Your Date of Birth <strong>does not match</strong> with the Aadhaar Card Date of Birth.
-                </p>
-                <p className="mt-2 text-sm">
-                  🔹 <strong>How to Change It?</strong> Visit the <a href="https://uidai.gov.in/" target="_blank" className="text-blue-600 font-medium underline">UIDAI Website</a> or your nearest Aadhaar center.  
-                  🔹 <strong>Impact on Forms:</strong> Incorrect DOB can cause <strong>rejections in passport, and bank applications</strong>.  
-                </p>
+                
+                {comparisonResult ? (
+                  // Display dynamic AI-generated message from the backend
+                  <div className="mt-2 text-sm">
+                    <p>{comparisonResult.message && comparisonResult.message.includes('```') 
+                      ? comparisonResult.message.replace(/```json[\s\S]*?```/g, '') 
+                      : comparisonResult.message}
+                    </p>
+                    
+                    {!comparisonResult.isMatch && (
+                      <p className="mt-2">
+                        🔹 <strong>How to Change It?</strong> Visit the <a href="https://uidai.gov.in/" target="_blank" className="text-blue-600 font-medium underline">UIDAI Website</a> or your nearest Aadhaar center.
+                        <br />
+                        🔹 <strong>Impact on Forms:</strong> Incorrect information can cause <strong>rejections in passport, and bank applications</strong>.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  // Fallback to default message if no comparison result
+                  <div className="mt-2 text-sm">
+                    <p>
+                      Your Date of Birth <strong>does not match</strong> with the Aadhaar Card Date of Birth.
+                    </p>
+                    <p className="mt-2">
+                      🔹 <strong>How to Change It?</strong> Visit the <a href="https://uidai.gov.in/" target="_blank" className="text-blue-600 font-medium underline">UIDAI Website</a> or your nearest Aadhaar center.  
+                      <br />
+                      🔹 <strong>Impact on Forms:</strong> Incorrect DOB can cause <strong>rejections in passport, and bank applications</strong>.  
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
