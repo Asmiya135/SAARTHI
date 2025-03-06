@@ -12,6 +12,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.23.0",
     "@huggingface/inference": "^3.3.6",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
