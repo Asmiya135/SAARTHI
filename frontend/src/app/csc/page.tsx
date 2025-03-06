@@ -882,6 +882,28 @@ const Page = () => {
     });
   }, [currentLocation]);
 
+  // Clear existing route from map
+  const clearRoute = () => {
+    if (map) {
+      try {
+        // First remove the layer if it exists
+        if (routeLayer && map.getLayer(routeLayer)) {
+          map.removeLayer(routeLayer);
+        }
+        
+        // Then remove the source if it exists
+        if (map.getSource('route')) {
+          map.removeSource('route');
+        }
+      } catch (error) {
+        console.error("Error clearing route:", error);
+      }
+      
+      setRouteLayer(null);
+      setRoute(null);
+    }
+  };
+
   // Clear route when selected location changes
   useEffect(() => {
     clearRoute();
@@ -988,7 +1010,7 @@ const Page = () => {
     }
   };
 
-  // Get directions using OLA Maps directions API - strictly following the documentation
+  // Get directions using OLA Maps directions API - following the correct API structure
   const getRoute = async (start: [number, number], end: [number, number]) => {
     if (!start || !end) return;
     
@@ -996,21 +1018,17 @@ const Page = () => {
     clearRoute();
     
     try {
-      // Format coordinates for API request - API expects "lat,lng" format for query params
+      // Format coordinates for API request - API expects lat,lng format for query params
       const origin = `${start[1]},${start[0]}`; // lat,lng
       const destination = `${end[1]},${end[0]}`; // lat,lng
       
-      // Generate a proper UUIDv4 for request tracing
-      const requestId = generateUUID();
-      
-      const url = `https://api.olamaps.io/routing/v1/directions?origin=${origin}&destination=${destination}`;
+      const apiKey = "RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb";
+      const url = `https://api.olamaps.io/routing/v1/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&alternatives=false&steps=true&overview=full&language=en&traffic_metadata=false&api_key=${apiKey}`;
       
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Request-Id': requestId,
-          'apiKey': 'RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb'
+          'accept': 'application/json'
         }
       });
       
@@ -1021,7 +1039,7 @@ const Page = () => {
       const data = await response.json();
       console.log("Directions API Response:", data);
       
-      if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+      if (data.status === 'SUCCESS' && data.routes && data.routes.length > 0) {
         const routeData = data.routes[0];
         
         // Get distance and duration from route legs
@@ -1040,12 +1058,8 @@ const Page = () => {
         }
         
         // Extract route geometry from overview_polyline
-        let routeCoordinates: [number, number][] = [];
-        if (routeData.overview_polyline) {
-          routeCoordinates = decodePolyline(routeData.overview_polyline);
-        }
+        const routeCoordinates = decodePolyline(routeData.overview_polyline);
         
-        // If we have valid route coordinates, use them
         if (routeCoordinates.length > 1) {
           const routeGeometry = {
             type: "LineString",
@@ -1079,272 +1093,38 @@ const Page = () => {
             [bounds.minLng, bounds.minLat],
             [bounds.maxLng, bounds.maxLat]
           ], { padding: 50 });
-          
-          return;
         } else {
-          // If we couldn't get route from overview_polyline, try to extract from steps
-          let allCoordinates: [number, number][] = [];
-          
-          // Try to extract coordinates from route steps
-          if (routeData.legs) {
-            routeData.legs.forEach((leg: any) => {
-              if (leg.steps && Array.isArray(leg.steps)) {
-                leg.steps.forEach((step: any) => {
-                  if (step.start_location) {
-                    allCoordinates.push([step.start_location.lng, step.start_location.lat]);
-                  }
-                });
-                
-                // Add end location of last step
-                const lastStep = leg.steps[leg.steps.length - 1];
-                if (lastStep && lastStep.end_location) {
-                  allCoordinates.push([lastStep.end_location.lng, lastStep.end_location.lat]);
-                }
-              }
-            });
-          }
-          
-          // If we have valid coordinates from steps
-          if (allCoordinates.length > 1) {
-            const routeGeometry = {
-              type: "LineString",
-              coordinates: allCoordinates
-            };
-            
-            setRoute({
-              distance: totalDistance / 1000,
-              duration: totalDuration / 60,
-              geometry: routeGeometry
-            });
-            
-            // Draw the route on the map
-            drawRoute(routeGeometry);
-            
-            // Calculate and fit bounds
-            const bounds = allCoordinates.reduce(
-              (acc, curr) => {
-                return {
-                  minLng: Math.min(acc.minLng, curr[0]),
-                  maxLng: Math.max(acc.maxLng, curr[0]),
-                  minLat: Math.min(acc.minLat, curr[1]),
-                  maxLat: Math.max(acc.maxLat, curr[1])
-                };
-              },
-              { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-            );
-            
-            map.fitBounds([
-              [bounds.minLng, bounds.minLat],
-              [bounds.maxLng, bounds.maxLat]
-            ], { padding: 50 });
-            
-            return;
-          }
+          throw new Error("Failed to decode polyline data");
         }
-      } else if (data.status === 'BAD_REQUEST' || data.status === 'FAILURE') {
-        throw new Error(`API Error: ${data.reason || 'Unknown error'}`);
       } else {
-        throw new Error('No valid routes found in the response');
+        throw new Error(`API Error: ${data.status || 'Unknown error'}`);
       }
-      
-      // If we get here, we need to try the basic API
-      await getRouteUsingBasicAPI(start, end);
-      
     } catch (error) {
       console.error('Error fetching route:', error);
-      
-      // Try the basic API as fallback
-      try {
-        await getRouteUsingBasicAPI(start, end);
-      } catch (fallbackError) {
-        console.error("All routing attempts failed:", fallbackError);
-        drawFallbackRoute(start, end);
-      }
+      drawFallbackRoute(start, end);
     } finally {
       setIsRouteFetching(false);
     }
   };
   
-  // Helper function to generate UUID for request tracing
-  const generateUUID = () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0, 
-            v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  };
-  
-  // Alternative method using the basic API
-  const getRouteUsingBasicAPI = async (start: [number, number], end: [number, number]) => {
-    // Format coordinates for API request
-    const origin = `${start[1]},${start[0]}`; // lat,lng
-    const destination = `${end[1]},${end[0]}`; // lat,lng
-    
-    // Generate UUID for request tracing
-    const requestId = generateUUID();
-    
-    const url = `https://api.olamaps.io/routing/v1/directions/basic?origin=${origin}&destination=${destination}`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Request-Id': requestId,
-        'apiKey': 'RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Basic directions request failed with status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Basic API Response:", data);
-    
-    if (data.status === 'OK' && data.routes && data.routes.length > 0) {
-      const routeData = data.routes[0];
-      
-      // Get distance and duration
-      let totalDistance = 0;
-      let totalDuration = 0;
-      
-      if (routeData.legs && routeData.legs.length > 0) {
-        routeData.legs.forEach((leg: any) => {
-          if (typeof leg.distance === 'number') {
-            totalDistance += leg.distance;
-          }
-          if (typeof leg.duration === 'number') {
-            totalDuration += leg.duration;
-          }
-        });
-      }
-      
-      // Try to get coordinates from overview_polyline
-      let routeCoordinates: [number, number][] = [];
-      
-      if (routeData.overview_polyline) {
-        routeCoordinates = decodePolyline(routeData.overview_polyline);
-      }
-      
-      // If that worked, use it
-      if (routeCoordinates.length > 1) {
-        const routeGeometry = {
-          type: "LineString",
-          coordinates: routeCoordinates
-        };
-        
-        setRoute({
-          distance: totalDistance / 1000,
-          duration: totalDuration / 60,
-          geometry: routeGeometry
-        });
-        
-        // Draw the route on the map
-        drawRoute(routeGeometry);
-        
-        // Calculate bounds and fit
-        const bounds = routeCoordinates.reduce(
-          (acc, curr) => {
-            return {
-              minLng: Math.min(acc.minLng, curr[0]),
-              maxLng: Math.max(acc.maxLng, curr[0]),
-              minLat: Math.min(acc.minLat, curr[1]),
-              maxLat: Math.max(acc.maxLat, curr[1])
-            };
-          },
-          { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-        );
-        
-        map.fitBounds([
-          [bounds.minLng, bounds.minLat],
-          [bounds.maxLng, bounds.maxLat]
-        ], { padding: 50 });
-        
-        return;
-      } else {
-        // Extract coordinates from legs and steps as a fallback
-        let allCoordinates: [number, number][] = [];
-        
-        if (routeData.legs) {
-          routeData.legs.forEach((leg: any) => {
-            if (leg.steps && Array.isArray(leg.steps)) {
-              leg.steps.forEach((step: any) => {
-                if (step.start_location) {
-                  allCoordinates.push([step.start_location.lng, step.start_location.lat]);
-                }
-              });
-              
-              // Add final destination point
-              const lastStep = leg.steps[leg.steps.length - 1];
-              if (lastStep && lastStep.end_location) {
-                allCoordinates.push([lastStep.end_location.lng, lastStep.end_location.lat]);
-              }
-            }
-          });
-        }
-        
-        if (allCoordinates.length > 1) {
-          const routeGeometry = {
-            type: "LineString",
-            coordinates: allCoordinates
-          };
-          
-          setRoute({
-            distance: totalDistance / 1000,
-            duration: totalDuration / 60,
-            geometry: routeGeometry
-          });
-          
-          // Draw the route
-          drawRoute(routeGeometry);
-          
-          // Calculate bounds and fit
-          const bounds = allCoordinates.reduce(
-            (acc, curr) => {
-              return {
-                minLng: Math.min(acc.minLng, curr[0]),
-                maxLng: Math.max(acc.maxLng, curr[0]),
-                minLat: Math.min(acc.minLat, curr[1]),
-                maxLat: Math.max(acc.maxLat, curr[1])
-              };
-            },
-            { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-          );
-          
-          map.fitBounds([
-            [bounds.minLng, bounds.minLat],
-            [bounds.maxLng, bounds.maxLat]
-          ], { padding: 50 });
-          
-          return;
-        }
-        
-        // If we still don't have a route, use a straight line
-        throw new Error("Could not extract route coordinates from response");
-      }
-    } else {
-      throw new Error("No valid routes found in the basic API response");
-    }
-  };
-  
   // Function to decode polyline with improved error handling
   const decodePolyline = (str: string): [number, number][] => {
-    let index = 0;
-    let lat = 0;
-    let lng = 0;
-    const coordinates: [number, number][] = [];
-    let shift = 0;
-    let result = 0;
-    let byte = null;
-    let latitude_change;
-    let longitude_change;
-
     if (!str || typeof str !== 'string') {
       console.error("Invalid polyline string provided");
       return [];
     }
 
     try {
+      let index = 0;
+      let lat = 0;
+      let lng = 0;
+      const coordinates: [number, number][] = [];
+      let shift = 0;
+      let result = 0;
+      let byte = null;
+      let latitude_change;
+      let longitude_change;
+
       while (index < str.length) {
         // Reset shift and result for latitude
         shift = 0;
@@ -1384,38 +1164,6 @@ const Page = () => {
       console.error("Error decoding polyline:", error);
       return [];
     }
-  };
-
-  // Draw a fallback route when all API attempts fail
-  const drawFallbackRoute = (start: [number, number], end: [number, number]) => {
-    // Create a simple direct line between points
-    const simpleGeometry = {
-      type: "LineString",
-      coordinates: [start, end]
-    };
-    
-    // Calculate simple distance (very rough)
-    const lngDiff = Math.abs(end[0] - start[0]);
-    const latDiff = Math.abs(end[1] - start[1]);
-    const distance = Math.sqrt(lngDiff * lngDiff + latDiff * latDiff) * 111; // ~111km per degree
-    
-    // Calculate simple duration (assuming 40km/h average speed)
-    const duration = (distance / 40) * 60; // minutes
-    
-    setRoute({
-      distance: distance,
-      duration: duration,
-      geometry: simpleGeometry
-    });
-    
-    // Draw the route on the map
-    drawRoute(simpleGeometry);
-    
-    // Fit map to show the entire route (with padding)
-    map.fitBounds([
-      [Math.min(start[0], end[0]), Math.min(start[1], end[1])],
-      [Math.max(start[0], end[0]), Math.max(start[1], end[1])]
-    ], { padding: 50 });
   };
 
   // Draw route on the map with enhanced error handling
@@ -1471,26 +1219,36 @@ const Page = () => {
     }
   };
 
-  // Clear existing route from map
-  const clearRoute = () => {
-    if (map) {
-      try {
-        // First remove the layer if it exists
-        if (routeLayer && map.getLayer(routeLayer)) {
-          map.removeLayer(routeLayer);
-        }
-        
-        // Then remove the source if it exists
-        if (map.getSource('route')) {
-          map.removeSource('route');
-        }
-      } catch (error) {
-        console.error("Error clearing route:", error);
-      }
-      
-      setRouteLayer(null);
-      setRoute(null);
-    }
+  // Draw a fallback route when API attempts fail
+  const drawFallbackRoute = (start: [number, number], end: [number, number]) => {
+    // Create a simple direct line between points
+    const simpleGeometry = {
+      type: "LineString",
+      coordinates: [start, end]
+    };
+    
+    // Calculate simple distance (very rough)
+    const lngDiff = Math.abs(end[0] - start[0]);
+    const latDiff = Math.abs(end[1] - start[1]);
+    const distance = Math.sqrt(lngDiff * lngDiff + latDiff * latDiff) * 111; // ~111km per degree
+    
+    // Calculate simple duration (assuming 40km/h average speed)
+    const duration = (distance / 40) * 60; // minutes
+    
+    setRoute({
+      distance: distance,
+      duration: duration,
+      geometry: simpleGeometry
+    });
+    
+    // Draw the route on the map
+    drawRoute(simpleGeometry);
+    
+    // Fit map to show the entire route (with padding)
+    map.fitBounds([
+      [Math.min(start[0], end[0]), Math.min(start[1], end[1])],
+      [Math.max(start[0], end[0]), Math.max(start[1], end[1])]
+    ], { padding: 50 });
   };
 
   // Format distance and duration for display
