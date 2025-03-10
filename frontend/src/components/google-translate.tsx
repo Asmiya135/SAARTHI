@@ -17,7 +17,7 @@ export default function GoogleTranslate() {
       new window.google.translate.TranslateElement(
         {
           pageLanguage: "en",
-          includedLanguages: "en,hi,gu,bn,ta,te,kn,ml,mr,pa,ur,or,as,ma,sd",
+          includedLanguages: "en,hi,gu,bn,ta,te,kn,ml,mr,pa,ur,or,as,ma,sd,bo,doi,ks,kok,mai,mni,ne,sa,sat,si,brx",
           layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
         },
         "google_translate_element"

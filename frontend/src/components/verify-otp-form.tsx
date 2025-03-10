@@ -53,7 +53,7 @@ export function VerifyOTPForm({ mobileNumber, onEdit, onVerify }: VerifyOTPFormP
       <div className="space-y-2">
         <h1 className="text-[22px] font-semibold text-[#1A1A1A]">Mobile Number Verification</h1>
         <p className="text-[15px] text-[#666666]">
-          UMANG has sent you an OTP on your registered mobile {mobileNumber}{" "}
+          Abhudaya has sent you an OTP on your registered mobile {mobileNumber}{" "}
           <button onClick={onEdit} className="text-[#0066B3] hover:underline">
             (Edit)
           </button>
