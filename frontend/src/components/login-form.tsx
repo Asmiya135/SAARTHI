@@ -109,26 +109,26 @@ export function LoginForm() {
             </Link>
           </div>
 
-          <div className="relative py-2">
+          {/* <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-[#E5E7EB]" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-3 text-[#666666]">or Login/Register with</span>
             </div>
-          </div>
+          </div> */}
 
-          <button
+          {/* <button
             type="button"
             className="h-[46px] w-full rounded-lg bg-[#F8F9FC] text-[15px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F8F9FC]/80 active:bg-[#E5E7EB]"
-          >
-            <div className="flex items-center justify-center gap-2">
+          > */}
+            {/* <div className="flex items-center justify-center gap-2">
               <Info className="h-4 w-4 text-[#0066B3]" />
               MeriPehchaan
             </div>
-          </button>
+          </button> */}
 
-          <div className="flex items-start gap-2.5 rounded-lg bg-[#F8F9FC] p-4 text-[13px]">
+          {/* <div className="flex items-start gap-2.5 rounded-lg bg-[#F8F9FC] p-4 text-[13px]">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#0066B3]" />
             <div className="space-y-0.5 text-[#666666]">
               <span className="font-medium text-[#1A1A1A]">MeriPehchaan</span>
@@ -138,7 +138,7 @@ export function LoginForm() {
                 departments
               </span>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
