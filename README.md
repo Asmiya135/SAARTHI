@@ -1,5 +1,5 @@
 ## Brief
-Our AI-powered platform simplifies access to government welfare schemes by addressing challenges such as scattered information, lengthy travel, and document verification. It acts as a digital assistant, helping users navigate, verify eligibility, and apply seamlessly.
+Our AI-powered platform simplifies access to government welfare schemes through a multilingual website in 23 Indian Regional Languages, including Indian Sign Language(ISL). SAARTHI, an intelligent assistant, interacts via text and speech in multiple languages, offering AI-Driven scheme recommendations, eligibility checks, and document verification using Qwen OCR and Gemini-2.0-Flash. GIS-based mapping will help users locate near CSCs, while transcription and translation APIs will ensure seamless communication.
 
 ## Solution
 
