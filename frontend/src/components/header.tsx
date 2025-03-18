@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { SetupProfileDialog } from "./setup-profile-dialog"
 import GoogleTranslate from "@/components/google-translate"
+import GeminiChatbot from "@/components/GeminiChatbot"
 
 interface Profile {
   id: string
@@ -29,11 +30,34 @@ export function Header() {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState("English")
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
-  const [profiles, setProfiles] = useState<Profile[]>([{ id: "1", name: "Achintya" }])
+  const [profiles, setProfiles] = useState<Profile[]>([
+    { id: "1", name: "Achintya", avatar: undefined } // Fixed syntax error
+  ])
+  const [detectedText, setDetectedText] = useState("") // ✅ Added missing state
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false) // ✅ Added missing state
 
   const handleAddProfile = (newProfile: Profile) => {
     setProfiles([...profiles, newProfile])
     setIsProfileDialogOpen(false)
+  }
+
+  const handleRunPython = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/python/run-python")
+      console.log("Detected res:", res)
+      const data = await res.json()
+      console.log("Detected data:", data)
+      if (data.output) {
+        const text = data.output.trim() // Use the final predicted string
+        console.log("Detected Text:", text) // Print the detected text
+        setDetectedText(text)
+        setIsChatbotOpen(true) // Open chatbot after receiving detected text
+      } else {
+        console.error("Invalid response format:", data)
+      }
+    } catch (error) {
+      console.error("Error:", error)
+    }
   }
 
   return (
@@ -65,13 +89,25 @@ export function Header() {
 
           {/* Right Section */}
           <div className="flex items-center gap-5">
-            <Button
+            {/* <Button
+              variant="outline"
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
+            >
+              <Image src="/ISL.png" alt="ISL Chatbot" width={20} height={20} />
+              ISL Chatbot
+            </Button> */}
+             <Button
+              onClick={handleRunPython}
               variant="outline"
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
             >
               <Image src="/ISL.png" alt="ISL Chatbot" width={20} height={20} />
               ISL Chatbot
             </Button>
+
+            {/* Render GeminiChatbot */}
+            <GeminiChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} detectedText={detectedText} />
+
 
             {/* Notifications Dropdown */}
             <DropdownMenu>

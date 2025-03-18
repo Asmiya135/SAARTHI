@@ -4,6 +4,7 @@ import cors from "cors";
 import userRoutes from "./routes/user.js";
 import schemeRoutes from "./routes/scheme.js";
 import voiceCommanderRoutes from "./routes/voiceCommander.js";
+import pythonRoute from "./routes/pythonRoute.js"; 
 import connectDB from "./db/connect.js";
  import ngrok from 'ngrok';
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(cors());
 app.use(express.json());
  
 // Routes
+app.use('/api/python', pythonRoute);
 app.use("/api/voice", voiceCommanderRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/schemes", schemeRoutes);
