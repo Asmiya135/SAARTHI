@@ -1,0 +1,2 @@
+backend/forisl/Lib/site-packages/*.dll filter=lfs diff=lfs merge=lfs -text
+backend/forisl/Lib/site-packages/*.pyd filter=lfs diff=lfs merge=lfs -text
