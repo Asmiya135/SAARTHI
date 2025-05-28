@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import styles from './page.module.css'
+import { Loader } from '@googlemaps/js-api-loader'
 
 type CSC = {
   id: number;
@@ -24,20 +25,27 @@ type LocationFilters = {
   village: string;
 };
 
-type RouteInfo = {
-  distance: number;
-  duration: number;
-  geometry: any;
+// Define route state type
+interface RouteState {
+  distance: string;
+  duration: string;
+}
+
+// Helper to convert [number, number] to LatLngLiteral
+const toLatLngLiteral = (coord: [number, number] | { lat: number; lng: number }): google.maps.LatLngLiteral => {
+  if (Array.isArray(coord)) {
+    return { lat: coord[1], lng: coord[0] };
+  }
+  return coord;
 };
 
 const Page = () => {
-  const mapRef = useRef(null);
-  const [olaMaps, setOlaMaps] = useState<any>(null);
-  const [map, setMap] = useState<any>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [markers, setMarkers] = useState<any[]>([]);
-  const [userMarker, setUserMarker] = useState<any>(null);
+  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
+  const [userMarker, setUserMarker] = useState<google.maps.Marker | null>(null);
   const [filters, setFilters] = useState<LocationFilters>({
     state: "",
     district: "",
@@ -50,12 +58,16 @@ const Page = () => {
   const [startSearchQuery, setStartSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [route, setRoute] = useState<RouteInfo | null>(null);
+  const [route, setRoute] = useState<RouteState | null>(null);
   const [routeLayer, setRouteLayer] = useState<any>(null);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [isRouteFetching, setIsRouteFetching] = useState<boolean>(false);
   const [directionsFrom, setDirectionsFrom] = useState<'current' | 'search'>('current');
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
 
   // Common Service Centers data
   const cscLocations: CSC[] = [
@@ -796,38 +808,17 @@ const Page = () => {
     if (newFilteredLocations.length === 1) {
       setSelectedLocation(newFilteredLocations[0].id);
       if (map) {
-        map.flyTo({
-          center: newFilteredLocations[0].coordinates,
-          zoom: 14
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ 
+          lat: newFilteredLocations[0].coordinates[1], 
+          lng: newFilteredLocations[0].coordinates[0] 
         });
+        map.fitBounds(bounds);
       }
     } else if (newFilteredLocations.length > 0) {
       // Center map to show all filtered locations
-      centerMapToShowAll(newFilteredLocations);
+      updateMapBounds(newFilteredLocations);
     }
-  };
-
-  // Center map to show all filtered locations
-  const centerMapToShowAll = (locations: CSC[]) => {
-    if (!map || locations.length === 0) return;
-    
-    // Calculate bounds
-    const bounds = locations.reduce(
-      (bounds, location) => {
-        const [lng, lat] = location.coordinates;
-        bounds.minLng = Math.min(bounds.minLng, lng);
-        bounds.maxLng = Math.max(bounds.maxLng, lng);
-        bounds.minLat = Math.min(bounds.minLat, lat);
-        bounds.maxLat = Math.max(bounds.maxLat, lat);
-        return bounds;
-      },
-      { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-    );
-    
-    map.fitBounds([
-      [bounds.minLng, bounds.minLat], // Southwest corner
-      [bounds.maxLng, bounds.maxLat]  // Northeast corner
-    ], { padding: 50, maxZoom: 12 });
   };
 
   // Get user's current location
@@ -838,469 +829,156 @@ const Page = () => {
           setCurrentLocation([position.coords.longitude, position.coords.latitude]);
         },
         (error) => {
-          console.error("Error getting location:", error);
-          // Default to central India as fallback
+          alert("Location access denied or unavailable. Showing default view of India.");
           setCurrentLocation([78.9629, 20.5937]);
         }
       );
     }
   }, []);
 
-  // Initialize map with improved layer styling (fixed to use only supported API methods)
+  // Initialize Google Maps with controls
   useEffect(() => {
-    import('olamaps-web-sdk').then((module) => {
-      const { OlaMaps } = module;
-      const olaMapInstance = new OlaMaps({
-        apiKey: "RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb",
-      });
-      
-      setOlaMaps(olaMapInstance);
-      
-      const myMap = olaMapInstance.init({
-        style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
-        container: 'map',
-        center: currentLocation || [78.9629, 20.5937], // Default to central India
-        zoom: 5,
-      });
-      
-      setMap(myMap);
-      
-      // Add navigation controls with compass
-      const navigationControls = olaMapInstance.addNavigationControls({
-        showCompass: true,
-        showZoom: true,
-        visualizePitch: true,
-        position: 'top-right'
-      });
-      
-      myMap.addControl(navigationControls);
-      
-      // Wait for map to load before adding markers
-      myMap.on("load", () => {
-        addMarkers(olaMapInstance, myMap);
-        addUserMarker(olaMapInstance, myMap);
-        
-        // Add a map attribution control (built into maplibregl)
-        if (myMap.addControl && typeof myMap.addControl === 'function') {
-          try {
-            // Add built-in attribution control
-            const attributionControl = new (window as any).maplibregl.AttributionControl({
-              compact: true
-            });
-            myMap.addControl(attributionControl, 'bottom-right');
-          } catch (error) {
-            console.error("Error adding attribution control:", error);
-          }
-        }
-      });
+    const loader = new Loader({
+      apiKey: "AIzaSyANzH7BnNww8JixawdiJ77ogUFxulYwXCE", // Replace with your API key
+      version: "weekly",
+      libraries: ["places"]
     });
-  }, [currentLocation]);
 
-  // Clear existing route from map
-  const clearRoute = () => {
-    if (map) {
-      try {
-        // Remove all layers associated with route
-        if (Array.isArray(routeLayer)) {
-          routeLayer.forEach(layerId => {
-            if (map.getLayer(layerId)) {
-              map.removeLayer(layerId);
-            }
-          });
-        } else if (routeLayer && map.getLayer(routeLayer)) {
-          map.removeLayer(routeLayer);
-        }
-        
-        // Then remove the source if it exists
-        if (map.getSource('route')) {
-          map.removeSource('route');
-        }
-      } catch (error) {
-        console.error("Error clearing route:", error);
+    loader.load().then(() => {
+      if (mapRef.current) {
+        const mapInstance = new google.maps.Map(mapRef.current, {
+          center: currentLocation ? toLatLngLiteral(currentLocation) : { lat: 20.5937, lng: 78.9629 },
+          zoom: 5,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true
+        });
+
+        setMap(mapInstance);
+        setDirectionsService(new google.maps.DirectionsService());
+        setDirectionsRenderer(new google.maps.DirectionsRenderer({
+          map: mapInstance,
+          suppressMarkers: true, // We'll handle markers ourselves
+          polylineOptions: {
+            strokeColor: '#00A86B',
+            strokeWeight: 6,
+            strokeOpacity: 0.8
+          }
+        }));
+        setPlacesService(new google.maps.places.PlacesService(mapInstance));
+        setAutocompleteService(new google.maps.places.AutocompleteService());
+
+        // Add markers after map is loaded
+        google.maps.event.addListenerOnce(mapInstance, 'idle', () => {
+          addMarkers(mapInstance);
+          addUserMarker(mapInstance);
+        });
       }
-      
-      setRouteLayer(null);
+    });
+  }, []);
+
+  // Get route between two points
+  const getRoute = async (start: [number, number], end: [number, number]) => {
+    if (!directionsService || !directionsRenderer) return;
+
+    try {
+      const result = await directionsService.route({
+        origin: { lat: start[1], lng: start[0] } as google.maps.LatLngLiteral,
+        destination: { lat: end[1], lng: end[0] } as google.maps.LatLngLiteral,
+        travelMode: google.maps.TravelMode.DRIVING
+      });
+
+      directionsRenderer.setDirections(result);
+      setRoute({
+        distance: result.routes[0].legs[0].distance?.text || '',
+        duration: result.routes[0].legs[0].duration?.text || ''
+      });
+    } catch (error) {
+      console.error('Error getting route:', error);
       setRoute(null);
     }
   };
 
-  // Clear route when selected location changes
-  useEffect(() => {
-    clearRoute();
-    if (selectedLocation) {
-      setShowDirections(true);
-    } else {
-      setShowDirections(false);
+  // Clear route
+  const clearRoute = () => {
+    if (directionsRenderer) {
+      const emptyResult: google.maps.DirectionsResult = {
+        routes: [],
+        request: {
+          origin: { lat: 0, lng: 0 },
+          destination: { lat: 0, lng: 0 },
+          travelMode: google.maps.TravelMode.DRIVING
+        }
+      };
+      directionsRenderer.setDirections(emptyResult);
     }
-  }, [selectedLocation]);
+    setRoute(null);
+  };
 
-  // Update start location when directionsFrom changes
-  useEffect(() => {
-    if (directionsFrom === 'current') {
-      setStartLocation(currentLocation);
-      setStartLocationName('Your Location');
-      if (selectedLocation && currentLocation) {
-        getRoute(currentLocation, getSelectedLocationCoords()).catch(err => {
-          console.error("Failed to get route in useEffect:", err);
-          // Error is handled inside getRoute function
-        });
+  // Search locations using Google Places Autocomplete
+  const searchLocations = async (term: string): Promise<void> => {
+    if (!autocompleteService || !map) return;
+
+    try {
+      const request: google.maps.places.AutocompletionRequest = {
+        input: term,
+        componentRestrictions: { country: 'in' },
+        types: ['geocode', 'establishment']
+      };
+
+      const response = await autocompleteService.getPlacePredictions(request);
+      if (response.predictions) {
+        setSearchResults(response.predictions);
       }
-    } else {
-      setStartLocation(null);
-      setStartLocationName('');
+    } catch (error) {
+      console.error('Error searching locations:', error);
+      setSearchResults([]);
     }
-  }, [directionsFrom, currentLocation, selectedLocation]);
+  };
+
+  // Select a location from search results
+  const selectSearchResult = async (result: google.maps.places.AutocompletePrediction) => {
+    if (!placesService) return;
+
+    try {
+      const place = await new Promise<google.maps.places.PlaceResult>((resolve, reject) => {
+        placesService.getDetails({
+          placeId: result.place_id,
+          fields: ['geometry', 'name']
+        }, (place, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            resolve(place);
+          } else {
+            reject(new Error('Place details not found'));
+          }
+        });
+      });
+
+      if (place.geometry?.location) {
+        const coordinates: [number, number] = [
+          place.geometry.location.lng(),
+          place.geometry.location.lat()
+        ];
+        
+        setStartLocation(coordinates);
+        setStartLocationName(result.description);
+        setStartSearchQuery(result.description);
+        setShowSearchDropdown(false);
+        
+        if (selectedLocation) {
+          getRoute(coordinates, getSelectedLocationCoords());
+        }
+      }
+    } catch (error) {
+      console.error('Error getting place details:', error);
+    }
+  };
 
   // Get coordinates of selected location
   const getSelectedLocationCoords = (): [number, number] => {
     const selected = cscLocations.find(loc => loc.id === selectedLocation);
     return selected ? selected.coordinates : [0, 0];
-  };
-
-  // Search for locations using OLA Maps search API
-  const searchLocations = async (query: string) => {
-    if (!query || query.length < 3) {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-      return;
-    }
-
-    setIsSearching(true);
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch(
-        `https://api.olamaps.io/search/geocode/forward?apiKey=RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb&text=${encodeURIComponent(query)}&limit=5`,
-        { signal: controller.signal }
-      );
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Search request failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.results) {
-        setSearchResults(data.results);
-        setShowSearchDropdown(true);
-      }
-    } catch (error) {
-      console.error('Error searching locations:', error);
-      setSearchResults([]);
-      // Could show a user-friendly error message here
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Handle search input changes with debounce
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setStartSearchQuery(value);
-    
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      searchLocations(value);
-    }, 500);
-    
-    setSearchTimeout(timeout);
-  };
-
-  // Select a location from search results
-  const selectSearchResult = (result: any) => {
-    const coordinates: [number, number] = [
-      result.geometry.coordinates[0],
-      result.geometry.coordinates[1]
-    ];
-    
-    setStartLocation(coordinates);
-    setStartLocationName(result.properties.name);
-    setStartSearchQuery(result.properties.name);
-    setShowSearchDropdown(false);
-    
-    if (selectedLocation) {
-      getRoute(coordinates, getSelectedLocationCoords());
-    }
-  };
-
-  // Get directions using OLA Maps directions API - following the correct API structure
-  const getRoute = async (start: [number, number], end: [number, number]) => {
-    if (!start || !end) return;
-    
-    setIsRouteFetching(true);
-    clearRoute();
-    
-    try {
-      // Format coordinates for API request - API expects lat,lng format for query params
-      const origin = `${start[1]},${start[0]}`; // lat,lng
-      const destination = `${end[1]},${end[0]}`; // lat,lng
-      
-      const apiKey = "RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb";
-      const url = `https://api.olamaps.io/routing/v1/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&alternatives=false&steps=true&overview=full&language=en&traffic_metadata=false&api_key=${apiKey}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Directions request failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Directions API Response:", data);
-      
-      if (data.status === 'SUCCESS' && data.routes && data.routes.length > 0) {
-        const routeData = data.routes[0];
-        
-        // Get distance and duration from route legs
-        let totalDistance = 0;
-        let totalDuration = 0;
-        
-        if (routeData.legs && routeData.legs.length > 0) {
-          routeData.legs.forEach((leg: any) => {
-            if (typeof leg.distance === 'number') {
-              totalDistance += leg.distance;
-            }
-            if (typeof leg.duration === 'number') {
-              totalDuration += leg.duration;
-            }
-          });
-        }
-        
-        // Extract route geometry from overview_polyline
-        const routeCoordinates = decodePolyline(routeData.overview_polyline);
-        
-        if (routeCoordinates.length > 1) {
-          const routeGeometry = {
-            type: "LineString",
-            coordinates: routeCoordinates
-          };
-          
-          setRoute({
-            distance: totalDistance / 1000, // Convert to km
-            duration: totalDuration / 60,   // Convert to minutes
-            geometry: routeGeometry
-          });
-          
-          // Draw the route on the map
-          drawRoute(routeGeometry);
-          
-          // Calculate bounds from coordinates
-          const bounds = routeCoordinates.reduce(
-            (acc, curr) => {
-              return {
-                minLng: Math.min(acc.minLng, curr[0]),
-                maxLng: Math.max(acc.maxLng, curr[0]),
-                minLat: Math.min(acc.minLat, curr[1]),
-                maxLat: Math.max(acc.maxLat, curr[1])
-              };
-            },
-            { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-          );
-          
-          // Fit map to show the entire route
-          map.fitBounds([
-            [bounds.minLng, bounds.minLat],
-            [bounds.maxLng, bounds.maxLat]
-          ], { padding: 50 });
-        } else {
-          throw new Error("Failed to decode polyline data");
-        }
-      } else {
-        throw new Error(`API Error: ${data.status || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error fetching route:', error);
-      drawFallbackRoute(start, end);
-    } finally {
-      setIsRouteFetching(false);
-    }
-  };
-  
-  // Function to decode polyline with improved error handling
-  const decodePolyline = (str: string): [number, number][] => {
-    if (!str || typeof str !== 'string') {
-      console.error("Invalid polyline string provided");
-      return [];
-    }
-
-    try {
-      let index = 0;
-      let lat = 0;
-      let lng = 0;
-      const coordinates: [number, number][] = [];
-      let shift = 0;
-      let result = 0;
-      let byte = null;
-      let latitude_change;
-      let longitude_change;
-
-      while (index < str.length) {
-        // Reset shift and result for latitude
-        shift = 0;
-        result = 0;
-
-        // Extract latitude
-        do {
-          byte = str.charCodeAt(index++) - 63;
-          result |= (byte & 0x1f) << shift;
-          shift += 5;
-        } while (byte >= 0x20);
-
-        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        
-        // Reset shift and result for longitude
-        shift = 0;
-        result = 0;
-
-        // Extract longitude
-        do {
-          byte = str.charCodeAt(index++) - 63;
-          result |= (byte & 0x1f) << shift;
-          shift += 5;
-        } while (byte >= 0x20);
-        
-        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        
-        lat += latitude_change;
-        lng += longitude_change;
-
-        // Convert to degrees and store as [lng, lat] for consistency with GeoJSON
-        coordinates.push([lng * 1e-5, lat * 1e-5]);
-      }
-
-      return coordinates;
-    } catch (error) {
-      console.error("Error decoding polyline:", error);
-      return [];
-    }
-  };
-
-  // Draw route on the map with enhanced error handling
-  const drawRoute = (geometry: any) => {
-    if (!map) return;
-    
-    try {
-      // Ensure geometry is valid
-      if (!geometry || !geometry.coordinates || geometry.coordinates.length < 2) {
-        console.error("Invalid geometry for route drawing");
-        return;
-      }
-      
-      // Check if the map has the source; if not, add it
-      if (!map.getSource('route')) {
-        map.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: geometry
-          }
-        });
-        
-        // Add the route line layer with improved styling
-        map.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#00A86B', // Green color for better visibility
-            'line-width': 6,
-            'line-opacity': 0.8
-          }
-        });
-
-        // Add a glow effect with a second line
-        map.addLayer({
-          id: 'route-glow',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#64DD17',
-            'line-width': 10,
-            'line-opacity': 0.3,
-            'line-blur': 3
-          }
-        }, 'route-line');
-        
-        // Save references to remove later
-        setRouteLayer(['route-line', 'route-glow']);
-      } else {
-        // Update existing source with new route data
-        map.getSource('route').setData({
-          type: 'Feature',
-          properties: {},
-          geometry: geometry
-        });
-      }
-    } catch (error) {
-      console.error("Error drawing route:", error);
-    }
-  };
-
-  // Draw a fallback route when API attempts fail
-  const drawFallbackRoute = (start: [number, number], end: [number, number]) => {
-    // Create a simple direct line between points
-    const simpleGeometry = {
-      type: "LineString",
-      coordinates: [start, end]
-    };
-    
-    // Calculate simple distance (very rough)
-    const lngDiff = Math.abs(end[0] - start[0]);
-    const latDiff = Math.abs(end[1] - start[1]);
-    const distance = Math.sqrt(lngDiff * lngDiff + latDiff * latDiff) * 111; // ~111km per degree
-    
-    // Calculate simple duration (assuming 40km/h average speed)
-    const duration = (distance / 40) * 60; // minutes
-    
-    setRoute({
-      distance: distance,
-      duration: duration,
-      geometry: simpleGeometry
-    });
-    
-    // Draw the route on the map
-    drawRoute(simpleGeometry);
-    
-    // Fit map to show the entire route (with padding)
-    map.fitBounds([
-      [Math.min(start[0], end[0]), Math.min(start[1], end[1])],
-      [Math.max(start[0], end[0]), Math.max(start[1], end[1])]
-    ], { padding: 50 });
-  };
-
-  // Format distance and duration for display
-  const formatDistance = (km: number) => {
-    return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-  };
-  
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${Math.round(minutes)} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const mins = Math.round(minutes % 60);
-      return `${hours} h ${mins} min`;
-    }
   };
 
   // Show directions panel
@@ -1334,163 +1012,136 @@ const Page = () => {
   };
 
   // Add custom styled markers for CSC locations
-  const addMarkers = (olaMapInstance: any, mapInstance: any) => {
-    if (!olaMapInstance || !mapInstance) return;
+  const addMarkers = (mapInstance: google.maps.Map) => {
+    if (!mapInstance) return;
     
     // Clear existing markers
-    markers.forEach(marker => marker.remove());
-    const newMarkers: any[] = [];
+    markers.forEach(marker => marker.setMap(null));
+    const newMarkers: google.maps.Marker[] = [];
     
     // Add markers for each location
     filteredLocations.forEach((location) => {
-      // Create popup for this location with improved styling
-      const popup = olaMapInstance
-        .addPopup({ offset: [0, -15] })
-        .setHTML(`
-          <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
-            ${location.imageUrl ? `
-              <div style="margin: 10px 0; width: 100%; height: 120px; overflow: hidden; border-radius: 6px;">
-                <img src="${location.imageUrl}" alt="${location.name}" 
-                     style="width: 100%; height: 100%; object-fit: cover;" />
-              </div>
-            ` : ''}
-            <p style="margin: 8px 0; font-weight: 500;"><strong>Address:</strong> ${location.address}</p>
-            <p style="margin: 8px 0; color: #555;">${location.description}</p>
-            <div style="margin: 10px 0;">
-              <strong>Services:</strong>
-              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
-                ${location.services.map(service => 
-                  `<span style="background: #e8f5e9; color: #2e7d32; padding: 3px 8px; 
-                   border-radius: 4px; font-size: 12px;">${service}</span>`
-                ).join('')}
-              </div>
-            </div>
-            <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
-            <button onclick="document.dispatchEvent(new CustomEvent('getDirections', {detail: ${location.id}}))" 
-                    style="background: #00A86B; color: white; border: none; padding: 8px 16px; 
-                    border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
-              Get Directions
-            </button>
-          </div>
-        `);
-      
-      // Create custom marker element for CSC location
-      const el = document.createElement('div');
-      
-      // Apply styles directly to marker element
-      el.style.width = '32px';
-      el.style.height = '42px';
-      el.style.backgroundImage = selectedLocation === location.id ? 
-        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%23FF3E4D\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")' : 
-        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%2300A86B\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")';
-      el.style.backgroundSize = 'contain';
-      el.style.backgroundRepeat = 'no-repeat';
-      el.style.cursor = 'pointer';
-      
-      // Add animation for selected markers
-      if (selectedLocation === location.id) {
-        el.style.animation = 'bounce 0.5s ease infinite alternate';
-      }
-      
-      // Add marker with custom element
-      const marker = olaMapInstance
-        .addMarker({ 
-          element: el,
-          offset: [0, 0], 
-          anchor: 'bottom' 
-        })
-        .setLngLat(location.coordinates)
-        .setPopup(popup)
-        .addTo(mapInstance);
-      
-      // Add click event to marker
-      marker.getElement().addEventListener('click', () => {
-        setSelectedLocation(location.id);
-        mapInstance.flyTo({
-          center: location.coordinates,
-          zoom: 14
-        });
+      // Create custom marker icon
+      const markerIcon = {
+        url: selectedLocation === location.id ? 
+          'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32"%3e%3cpath fill="%231976D2" stroke="white" stroke-width="1" d="M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/%3e%3c/svg%3e'
+          :
+          'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32"%3e%3cpath fill="%231976D2" stroke="white" stroke-width="1" d="M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/%3e%3c/svg%3e',
+        scaledSize: new google.maps.Size(32, 42),
+        anchor: new google.maps.Point(16, 42)
+      };
+
+      // Create marker
+      const marker = new google.maps.Marker({
+        position: { lat: location.coordinates[1], lng: location.coordinates[0] },
+        map: mapInstance,
+        icon: markerIcon,
+        title: location.name
       });
-      
+
+      // Create info window content
+      const content = `
+        <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
+          ${location.imageUrl ? `
+            <div style="margin: 10px 0; width: 100%; height: 120px; overflow: hidden; border-radius: 6px;">
+              <img src="${location.imageUrl}" alt="${location.name}" 
+                   style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>
+          ` : ''}
+          <p style="margin: 8px 0; font-weight: 500;"><strong>Address:</strong> ${location.address}</p>
+          <p style="margin: 8px 0; color: #555;">${location.description}</p>
+          <div style="margin: 10px 0;">
+            <strong>Services:</strong>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+              ${location.services.map(service => 
+                `<span style="background: #e3f2fd; color: #1976D2; padding: 3px 8px; 
+                 border-radius: 4px; font-size: 12px;">${service}</span>`
+              ).join('')}
+            </div>
+          </div>
+          <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
+          <button onclick="document.dispatchEvent(new CustomEvent('getDirections', {detail: ${location.id}}))" 
+                  style="background: #1976D2; color: white; border: none; padding: 8px 16px; 
+                  border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
+            Get Directions
+          </button>
+        </div>
+      `;
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: content
+      });
+
+      // Add click event to marker
+      marker.addListener('click', () => {
+        setSelectedLocation(location.id);
+        mapInstance.panTo({ lat: location.coordinates[1], lng: location.coordinates[0] });
+        mapInstance.setZoom(14);
+        infoWindow.open(mapInstance, marker);
+      });
+
       newMarkers.push(marker);
     });
-    
+
     setMarkers(newMarkers);
-    
-    // Add event listener for "Get Directions" button in popups
-    document.addEventListener('getDirections', (e: any) => {
-      const locationId = e.detail;
-      handleShowDirections(locationId);
-    });
   };
 
-  // Add user location marker with improved styling - using green colors
-  const addUserMarker = (olaMapInstance: any, mapInstance: any) => {
-    if (!olaMapInstance || !mapInstance || !currentLocation) return;
+  // Add user location marker
+  const addUserMarker = (mapInstance: google.maps.Map) => {
+    if (!mapInstance || !currentLocation) return;
     
     if (userMarker) {
-      userMarker.remove();
+      userMarker.setMap(null);
     }
     
-    // Create popup for user location with improved styling
-    const popup = olaMapInstance
-      .addPopup({ offset: [0, -15] })
-      .setHTML(`
+    const marker = new google.maps.Marker({
+      position: { lat: currentLocation[1], lng: currentLocation[0] },
+      map: mapInstance,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#1976D2',
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 2
+      }
+    });
+
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
         <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <h3 style="margin-top: 0; color: #00A86B; font-weight: 600;">Your Location</h3>
+          <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
           <p style="margin: 5px 0; color: #333;">This is your current position</p>
         </div>
-      `);
-    
-    // Custom marker element with green styling
-    const el = document.createElement('div');
-    el.className = styles.userMarker;
-    
-    // Create inner elements for the user marker with explicit styles
-    const dotElement = document.createElement('div');
-    dotElement.className = styles.userMarkerDot;
-    dotElement.style.backgroundColor = '#00A86B'; // Green dot
-    dotElement.style.border = '2px solid white';
-    
-    const pulseElement = document.createElement('div');
-    pulseElement.className = styles.userMarkerPulse;
-    pulseElement.style.backgroundColor = 'rgba(0, 168, 107, 0.3)'; // Green pulse with transparency
-    
-    // Append children to marker element
-    el.appendChild(dotElement);
-    el.appendChild(pulseElement);
-    
-    // Add marker
-    const marker = olaMapInstance
-      .addMarker({ 
-        element: el,
-        offset: [0, 0], 
-        anchor: 'center' 
-      })
-      .setLngLat(currentLocation)
-      .setPopup(popup)
-      .addTo(mapInstance);
-    
+      `
+    });
+
+    marker.addListener('click', () => {
+      infoWindow.open(mapInstance, marker);
+    });
+
     setUserMarker(marker);
   };
-  
+
   // Update markers when selected location changes or filters change
   useEffect(() => {
-    if (olaMaps && map) {
-      addMarkers(olaMaps, map);
+    if (map) {
+      addMarkers(map);
     }
-  }, [selectedLocation, filters, olaMaps, map]);
+  }, [selectedLocation, filters, map]);
   
   // Handle clicking on a location in the list
   const handleLocationClick = (location: CSC) => {
     setSelectedLocation(location.id);
     
     if (map) {
-      map.flyTo({
-        center: location.coordinates,
-        zoom: 14
-      });
+      const position: google.maps.LatLngLiteral = { 
+        lat: location.coordinates[1], 
+        lng: location.coordinates[0] 
+      };
+      map.panTo(position);
+      map.setZoom(14);
     }
     
     // If start location is already set, get route
@@ -1502,10 +1153,12 @@ const Page = () => {
   // Center map on user location
   const goToMyLocation = () => {
     if (map && currentLocation) {
-      map.flyTo({
-        center: currentLocation,
-        zoom: 15
-      });
+      const position: google.maps.LatLngLiteral = { 
+        lat: currentLocation[1], 
+        lng: currentLocation[0] 
+      };
+      map.panTo(position);
+      map.setZoom(15);
     }
   };
 
@@ -1520,12 +1173,64 @@ const Page = () => {
     setSelectedLocation(null);
     
     if (map) {
-      map.flyTo({
-        center: currentLocation || [78.9629, 20.5937],
-        zoom: 5
+      const bounds = new google.maps.LatLngBounds();
+      cscLocations.forEach(location => {
+        bounds.extend({ 
+          lat: location.coordinates[1], 
+          lng: location.coordinates[0] 
+        });
       });
+      map.fitBounds(bounds);
     }
   };
+
+  // Update the map bounds to show all locations
+  const updateMapBounds = (locations: CSC[]) => {
+    if (!map || locations.length === 0) return;
+    
+    const bounds = new google.maps.LatLngBounds();
+    locations.forEach(location => {
+      bounds.extend({ lat: location.coordinates[1], lng: location.coordinates[0] });
+    });
+    
+    map.fitBounds(bounds);
+  };
+
+  // Clear route when selected location changes
+  useEffect(() => {
+    if (directionsRenderer) {
+      const emptyResult: google.maps.DirectionsResult = {
+        routes: [],
+        request: {
+          origin: { lat: 0, lng: 0 },
+          destination: { lat: 0, lng: 0 },
+          travelMode: google.maps.TravelMode.DRIVING
+        }
+      };
+      directionsRenderer.setDirections(emptyResult);
+    }
+    setRoute(null);
+    
+    if (selectedLocation) {
+      setShowDirections(true);
+    } else {
+      setShowDirections(false);
+    }
+  }, [selectedLocation]);
+
+  // Initialize map with all locations
+  useEffect(() => {
+    if (map) {
+      const bounds = new google.maps.LatLngBounds();
+      cscLocations.forEach(location => {
+        bounds.extend({ 
+          lat: location.coordinates[1], 
+          lng: location.coordinates[0] 
+        });
+      });
+      map.fitBounds(bounds);
+    }
+  }, [map, cscLocations]);
 
   return (
     <div className={styles.container}>
@@ -1665,7 +1370,10 @@ const Page = () => {
                         type="text"
                         placeholder="Enter a starting location"
                         value={startSearchQuery}
-                        onChange={handleSearchChange}
+                        onChange={(e) => {
+                          setStartSearchQuery(e.target.value);
+                          searchLocations(e.target.value);
+                        }}
                         onFocus={() => {
                           if (searchResults.length > 0) setShowSearchDropdown(true);
                         }}
@@ -1681,8 +1389,8 @@ const Page = () => {
                               className={styles.searchResultItem}
                               onClick={() => selectSearchResult(result)}
                             >
-                              <span>{result.properties.name}</span>
-                              <small>{result.properties.city || ''} {result.properties.country || ''}</small>
+                              <span>{result.description}</span>
+                              <small>{result.terms.map((term: { value: string }) => term.value).join(', ')}</small>
                             </div>
                           ))}
                         </div>
@@ -1716,13 +1424,13 @@ const Page = () => {
                   <div className={styles.routeSummary}>
                     <div className={styles.routeMetric}>
                       <span className={styles.routeMetricValue}>
-                        {formatDistance(route.distance)}
+                        {route.distance}
                       </span>
                       <span className={styles.routeMetricLabel}>Distance</span>
                     </div>
                     <div className={styles.routeMetric}>
                       <span className={styles.routeMetricValue}>
-                        {formatDuration(route.duration)}
+                        {route.duration}
                       </span>
                       <span className={styles.routeMetricLabel}>Duration</span>
                     </div>
@@ -1778,6 +1486,36 @@ const Page = () => {
           </div>
         )}
       </div>
+
+      {/* Floating My Location Button */}
+      <button
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 24,
+          zIndex: 5,
+          background: '#1976D2',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: 48,
+          height: 48,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+        title="My Location"
+        onClick={goToMyLocation}
+      >
+        {/* Blue location icon SVG */}
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" fill="#1976D2"/>
+          <circle cx="12" cy="12" r="4" fill="white"/>
+          <circle cx="12" cy="12" r="2" fill="#1976D2"/>
+        </svg>
+      </button>
     </div>
   );
 };
