@@ -4,6 +4,28 @@ import React, { useEffect, useRef, useState } from 'react'
 import styles from './page.module.css'
 import { Loader } from '@googlemaps/js-api-loader'
 
+// Add type definitions for AdvancedMarkerElement
+declare global {
+  namespace google.maps {
+    class AdvancedMarkerElement {
+      constructor(options: {
+        map?: Map;
+        position: LatLngLiteral;
+        title?: string;
+      });
+      map: Map | null;
+      position: LatLngLiteral;
+      title?: string;
+      addListener(event: string, handler: Function): void;
+    }
+  }
+}
+
+// Add type for marker library
+interface MarkerLibrary {
+  AdvancedMarkerElement: typeof google.maps.AdvancedMarkerElement;
+}
+
 type CSC = {
   id: number;
   name: string;
@@ -39,24 +61,13 @@ const toLatLngLiteral = (coord: [number, number] | { lat: number; lng: number })
   return coord;
 };
 
-// 1. Red pin SVG for markers
-const getRedPinSVG = (selected: boolean) =>
-  `data:image/svg+xml;utf8,<svg width='36' height='48' viewBox='0 0 36 48' fill='none' xmlns='http://www.w3.org/2000/svg'><g filter='url(%23shadow)'><path d='M18 47C18 47 34 29.5 34 18C34 8.61116 26.3888 1 17.9999 1C9.61116 1 2 8.61116 2 18C2 29.5 18 47 18 47Z' fill='%23EA4335' stroke='white' stroke-width='2'/><circle cx='18' cy='18' r='7' fill='white'/><circle cx='18' cy='18' r='5' fill='%23EA4335'/></g><defs><filter id='shadow' x='0' y='0' width='36' height='48' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'><feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='black' flood-opacity='0.2'/></filter></defs></svg>`;
-
-// 2. Glowing blue dot for user location (SVG + CSS animation)
-const userMarkerHTML = `<div style="position:relative;width:24px;height:24px;">
-  <div style="position:absolute;top:0;left:0;width:24px;height:24px;border-radius:50%;background:rgba(25,118,210,0.25);animation:pulse 1.5s infinite;"></div>
-  <div style="position:absolute;top:6px;left:6px;width:12px;height:12px;border-radius:50%;background:#1976D2;border:2px solid white;"></div>
-  <style>@keyframes pulse{0%{transform:scale(1);opacity:0.6;}70%{transform:scale(2);opacity:0;}100%{transform:scale(1);opacity:0;}}</style>
-</div>`;
-
 const Page = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [userMarker, setUserMarker] = useState<google.maps.Marker | google.maps.marker.AdvancedMarkerElement | null>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
+  const [userMarker, setUserMarker] = useState<any | null>(null);
   const [filters, setFilters] = useState<LocationFilters>({
     state: "",
     district: "",
@@ -799,15 +810,105 @@ const Page = () => {
       updatedFilters.district = '';
       updatedFilters.subdistrict = '';
       updatedFilters.village = '';
+      
+      // If state is selected, zoom to that state's bounds
+      if (value && map) {
+        const stateLocations = cscLocations.filter(csc => csc.state === value);
+        if (stateLocations.length > 0) {
+          const bounds = new google.maps.LatLngBounds();
+          stateLocations.forEach(location => {
+            bounds.extend({ 
+              lat: location.coordinates[1], 
+              lng: location.coordinates[0] 
+            });
+          });
+
+          // Add padding to the bounds
+          const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+          
+          // Set zoom restrictions for state level
+          map.setOptions({
+            minZoom: 5,
+            maxZoom: 15,
+            restriction: {
+              latLngBounds: bounds,
+              strictBounds: false
+            }
+          });
+
+          // Smooth zoom to bounds
+          const currentZoom = map.getZoom() || 5;
+          const targetZoom = Math.min(7, currentZoom + 2); // Gradual zoom increase
+          
+          // First pan to center of bounds
+          const center = bounds.getCenter();
+          map.panTo(center);
+          
+          // Then smoothly zoom
+          setTimeout(() => {
+            map.fitBounds(bounds, padding);
+          }, 300);
+        }
+      } else {
+        // Reset restrictions when no state is selected
+        map?.setOptions({
+          minZoom: 4,
+          maxZoom: 18,
+          restriction: null
+        });
+      }
     } else if (field === 'district') {
       updatedFilters.subdistrict = '';
       updatedFilters.village = '';
+      
+      // If district is selected, zoom to that district's bounds
+      if (value && map) {
+        const districtLocations = cscLocations.filter(csc => 
+          csc.state === filters.state && csc.district === value
+        );
+        if (districtLocations.length > 0) {
+          const bounds = new google.maps.LatLngBounds();
+          districtLocations.forEach(location => {
+            bounds.extend({ 
+              lat: location.coordinates[1], 
+              lng: location.coordinates[0] 
+            });
+          });
+
+          // Add padding to the bounds
+          const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+          
+          // Set zoom restrictions for district level
+          map.setOptions({
+            minZoom: 7,
+            maxZoom: 18,
+            restriction: {
+              latLngBounds: bounds,
+              strictBounds: false
+            }
+          });
+
+          // Smooth zoom to bounds
+          const currentZoom = map.getZoom() || 7;
+          const targetZoom = Math.min(9, currentZoom + 2); // Gradual zoom increase
+          
+          // First pan to center of bounds
+          const center = bounds.getCenter();
+          map.panTo(center);
+          
+          // Then smoothly zoom
+          setTimeout(() => {
+            map.fitBounds(bounds, padding);
+          }, 300);
+        }
+      }
     } else if (field === 'subdistrict') {
       updatedFilters.village = '';
     }
     
     setFilters(updatedFilters);
     
+    // If there's only one filtered location after applying filter, select it
     const newFilteredLocations = cscLocations.filter(csc => {
       return (!updatedFilters.state || csc.state === updatedFilters.state) &&
              (!updatedFilters.district || csc.district === updatedFilters.district) &&
@@ -815,41 +916,109 @@ const Page = () => {
              (!updatedFilters.village || csc.village === updatedFilters.village);
     });
     
-    if (map && newFilteredLocations.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      newFilteredLocations.forEach(loc => bounds.extend({ lat: loc.coordinates[1], lng: loc.coordinates[0] }));
-      map.fitBounds(bounds);
-      if (newFilteredLocations.length === 1) {
-        map.setZoom(14);
-        setSelectedLocation(newFilteredLocations[0].id);
+    if (newFilteredLocations.length === 1) {
+      setSelectedLocation(newFilteredLocations[0].id);
+      if (map) {
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ 
+          lat: newFilteredLocations[0].coordinates[1], 
+          lng: newFilteredLocations[0].coordinates[0] 
+        });
+        
+        // Smooth zoom to single location
+        const center = bounds.getCenter();
+        map.panTo(center);
+        
+        setTimeout(() => {
+          map.fitBounds(bounds);
+        }, 300);
       }
+    } else if (newFilteredLocations.length > 0) {
+      // Center map to show all filtered locations
+      updateMapBounds(newFilteredLocations);
     }
   };
 
   // Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
+      // Get initial location
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+          
+          // Update accuracy circle if it exists
+          if (map && position.coords.accuracy) {
+            const accuracyCircle = new google.maps.Circle({
+              map: map,
+              center: { lat: position.coords.latitude, lng: position.coords.longitude },
+              radius: position.coords.accuracy,
+              fillColor: "#4285F4",
+              fillOpacity: 0.15,
+              strokeColor: "#4285F4",
+              strokeOpacity: 0.5,
+              strokeWeight: 1,
+              zIndex: 999
+            });
+          }
         },
         (error) => {
-          alert("Location access denied or unavailable. Showing default view of India.");
+          console.log("Location access denied or unavailable. Showing default view of India.");
           setCurrentLocation([78.9629, 20.5937]);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
         }
       );
+
+      // Watch for location changes
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+          
+          // Update accuracy circle if it exists
+          if (map && position.coords.accuracy) {
+            const accuracyCircle = new google.maps.Circle({
+              map: map,
+              center: { lat: position.coords.latitude, lng: position.coords.longitude },
+              radius: position.coords.accuracy,
+              fillColor: "#4285F4",
+              fillOpacity: 0.15,
+              strokeColor: "#4285F4",
+              strokeOpacity: 0.5,
+              strokeWeight: 1,
+              zIndex: 999
+            });
+          }
+        },
+        (error) => {
+          console.log("Error watching location:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+
+      // Cleanup watch on component unmount
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
     }
-  }, []);
+  }, [map]); // Added map as dependency
 
   // Initialize Google Maps with controls
   useEffect(() => {
     const loader = new Loader({
-      apiKey: "AIzaSyANzH7BnNww8JixawdiJ77ogUFxulYwXCE", // Replace with your API key
+      apiKey: "AIzaSyANzH7BnNww8JixawdiJ77ogUFxulYwXCE",
       version: "weekly",
-      libraries: ["places"]
+      libraries: ["places", "marker"]
     });
 
-    loader.load().then(() => {
+    loader.load().then(async () => {
       if (mapRef.current) {
         const mapInstance = new google.maps.Map(mapRef.current, {
           center: currentLocation ? toLatLngLiteral(currentLocation) : { lat: 20.5937, lng: 78.9629 },
@@ -857,14 +1026,23 @@ const Page = () => {
           mapTypeControl: true,
           streetViewControl: true,
           fullscreenControl: true,
-          zoomControl: true
+          zoomControl: true,
+          gestureHandling: "cooperative",
+          mapId: "csc_map_id",
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ]
         });
 
         setMap(mapInstance);
         setDirectionsService(new google.maps.DirectionsService());
         setDirectionsRenderer(new google.maps.DirectionsRenderer({
           map: mapInstance,
-          suppressMarkers: true, // We'll handle markers ourselves
+          suppressMarkers: true,
           polylineOptions: {
             strokeColor: '#00A86B',
             strokeWeight: 6,
@@ -1017,32 +1195,28 @@ const Page = () => {
   };
 
   // Add custom styled markers for CSC locations
-  const addMarkers = (mapInstance: google.maps.Map) => {
+  const addMarkers = async (mapInstance: google.maps.Map) => {
     if (!mapInstance) return;
     
     // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
-    const newMarkers: google.maps.Marker[] = [];
+    markers.forEach(marker => marker.map = null);
+    const newMarkers: google.maps.AdvancedMarkerElement[] = [];
+    
+    // Import AdvancedMarkerElement
+    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as MarkerLibrary;
     
     // Add markers for each location
     filteredLocations.forEach((location) => {
-      // Create custom marker icon
-      const markerIcon = {
-        url: getRedPinSVG(selectedLocation === location.id),
-        scaledSize: new google.maps.Size(36, 48),
-        anchor: new google.maps.Point(18, 47)
-      };
-
       // Create marker
-      const marker = new google.maps.Marker({
-        position: { lat: location.coordinates[1], lng: location.coordinates[0] },
+      const marker = new AdvancedMarkerElement({
         map: mapInstance,
-        icon: markerIcon,
+        position: { lat: location.coordinates[1], lng: location.coordinates[0] },
         title: location.name
       });
 
       // Create info window content
-      const content = `
+      const content = document.createElement('div');
+      content.innerHTML = `
         <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
           ${location.imageUrl ? `
@@ -1063,7 +1237,7 @@ const Page = () => {
             </div>
           </div>
           <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
-          <button onclick="document.dispatchEvent(new CustomEvent('getDirections', {detail: ${location.id}}))" 
+          <button id="getDirectionsBtn" 
                   style="background: #1976D2; color: white; border: none; padding: 8px 16px; 
                   border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
             Get Directions
@@ -1081,6 +1255,16 @@ const Page = () => {
         mapInstance.panTo({ lat: location.coordinates[1], lng: location.coordinates[0] });
         mapInstance.setZoom(14);
         infoWindow.open(mapInstance, marker);
+
+        // Add click event to the Get Directions button after the info window is opened
+        setTimeout(() => {
+          const getDirectionsBtn = content.querySelector('#getDirectionsBtn');
+          if (getDirectionsBtn) {
+            getDirectionsBtn.addEventListener('click', () => {
+              handleShowDirections(location.id);
+            });
+          }
+        }, 100);
       });
 
       newMarkers.push(marker);
@@ -1090,31 +1274,76 @@ const Page = () => {
   };
 
   // Add user location marker
-  const addUserMarker = (mapInstance: google.maps.Map) => {
+  const addUserMarker = async (mapInstance: google.maps.Map) => {
     if (!mapInstance || !currentLocation) return;
+    
     if (userMarker) {
-      if (userMarker instanceof google.maps.Marker) {
-        userMarker.setMap(null);
-      } else if ('map' in userMarker) {
-        userMarker.map = null;
-      }
+      userMarker.map = null;
     }
-    const div = document.createElement('div');
-    div.innerHTML = userMarkerHTML;
-    const marker = new google.maps.marker.AdvancedMarkerElement({
+    
+    // Create a blue dot marker for user location
+    const userLocationMarker = new google.maps.Marker({
       map: mapInstance,
       position: { lat: currentLocation[1], lng: currentLocation[0] },
-      content: div.firstChild as HTMLElement
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+      },
+      title: "Your Location",
+      zIndex: 1000 // Ensure it's always on top
     });
-    setUserMarker(marker);
+
+    // Add accuracy circle
+    const accuracyCircle = new google.maps.Circle({
+      map: mapInstance,
+      center: { lat: currentLocation[1], lng: currentLocation[0] },
+      radius: 50, // Default radius, will be updated with actual accuracy
+      fillColor: "#4285F4",
+      fillOpacity: 0.15,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.5,
+      strokeWeight: 1,
+      zIndex: 999
+    });
+
+    // Create info window content
+    const content = document.createElement('div');
+    content.innerHTML = `
+      <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
+        <p style="margin: 5px 0; color: #333;">This is your current position</p>
+      </div>
+    `;
+
+    const infoWindow = new google.maps.InfoWindow({
+      content: content
+    });
+
+    userLocationMarker.addListener('click', () => {
+      infoWindow.open(mapInstance, userLocationMarker);
+    });
+
+    setUserMarker(userLocationMarker);
+
+    // Update accuracy circle when location changes
+    return () => {
+      if (accuracyCircle) {
+        accuracyCircle.setMap(null);
+      }
+    };
   };
 
   // Update markers when selected location changes or filters change
   useEffect(() => {
     if (map) {
       addMarkers(map);
+      addUserMarker(map); // Always add user marker when markers are updated
     }
-  }, [selectedLocation, filters, map]);
+  }, [selectedLocation, filters, map, currentLocation]); // Added currentLocation dependency
   
   // Handle clicking on a location in the list
   const handleLocationClick = (location: CSC) => {
@@ -1158,6 +1387,13 @@ const Page = () => {
     setSelectedLocation(null);
     
     if (map) {
+      // Reset map options
+      map.setOptions({
+        minZoom: 4,
+        maxZoom: 18,
+        restriction: null
+      });
+
       const bounds = new google.maps.LatLngBounds();
       cscLocations.forEach(location => {
         bounds.extend({ 
@@ -1165,7 +1401,18 @@ const Page = () => {
           lng: location.coordinates[0] 
         });
       });
-      map.fitBounds(bounds);
+
+      // Add padding to the bounds
+      const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+      
+      // First pan to center
+      const center = bounds.getCenter();
+      map.panTo(center);
+      
+      // Then smoothly zoom out
+      setTimeout(() => {
+        map.fitBounds(bounds, padding);
+      }, 300);
     }
   };
 
@@ -1178,7 +1425,17 @@ const Page = () => {
       bounds.extend({ lat: location.coordinates[1], lng: location.coordinates[0] });
     });
     
-    map.fitBounds(bounds);
+    // Add padding to the bounds
+    const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+    
+    // First pan to center
+    const center = bounds.getCenter();
+    map.panTo(center);
+    
+    // Then smoothly zoom
+    setTimeout(() => {
+      map.fitBounds(bounds, padding);
+    }, 300);
   };
 
   // Clear route when selected location changes
@@ -1218,7 +1475,7 @@ const Page = () => {
   }, [map, cscLocations]);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{height: '100vh'}}>
       <div className={styles.mapContainer} id="map" ref={mapRef}></div>
       
       <div className={styles.sidebar}>
@@ -1470,37 +1727,7 @@ const Page = () => {
             )}
           </div>
         )}
-      </div>
-
-      {/* Floating My Location Button */}
-      <button
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          right: 24,
-          zIndex: 5,
-          background: '#1976D2',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: 48,
-          height: 48,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-        }}
-        title="My Location"
-        onClick={goToMyLocation}
-      >
-        {/* Blue location icon SVG */}
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" fill="#1976D2"/>
-          <circle cx="12" cy="12" r="4" fill="white"/>
-          <circle cx="12" cy="12" r="2" fill="#1976D2"/>
-        </svg>
-      </button>
+      </div>      
     </div>
   );
 };
