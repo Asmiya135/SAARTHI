@@ -16,7 +16,7 @@ router.get('/google/callback',
     failureRedirect: '/auth/google/failure',
   }),
   (req, res) => {
-    res.redirect('http://localhost:3000/');
+    res.redirect('http://localhost:3000/home');
     // credentials are stored in session, you can access them via req.user
     const userSession = req.user;
     Signin.create({
