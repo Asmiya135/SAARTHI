@@ -1476,20 +1476,116 @@ const Page = () => {
 
   return (
     <div className={styles.container} style={{height: '100vh'}}>
-      <div className={styles.mapContainer} id="map" ref={mapRef}></div>
+      <div className={styles.mapContainer} id="map" ref={mapRef}>
+        {showDirections && route && route.distance && route.duration && (
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            padding: '1rem',
+            zIndex: 1000,
+            maxWidth: '300px',
+            width: '100%'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              <h3 style={{
+                margin: 0,
+                fontSize: '1rem',
+                color: '#1a3a5f',
+                fontWeight: '600'
+              }}>Route Information</h3>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              <span style={{ color: '#666', fontSize: '0.9rem' }}>{route.distance}</span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span style={{ color: '#666', fontSize: '0.9rem' }}>{route.duration}</span>
+            </div>
+          </div>
+        )}
+      </div>
       
-      <div className={styles.sidebar}>
-        <div className={styles.filterSection}>
-          <h2>Find Common Service Centers</h2>
+      <div className={styles.sidebar} style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%'
+      }}>
+        <div className={styles.filterSection} style={{
+          flex: '0 0 55%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          marginBottom: '1rem'
+        }}>
+          <h2 style={{
+            fontSize: '1.5rem',
+            color: '#1a3a5f',
+            marginBottom: '1.5rem',
+            fontWeight: '600',
+            textAlign: 'center',
+            padding: '0.5rem',
+            borderBottom: '2px solid #e3f2fd'
+          }}>Find Common Service Centers</h2>
           
-          <div className={styles.filters}>
+          <div className={styles.filters} style={{
+            overflowY: 'auto',
+            flex: 1,
+            paddingRight: '0.5rem'
+          }}>
             <div className={styles.filterItem}>
-              <label htmlFor="state">State</label>
+              <label htmlFor="state" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.95rem'
+              }}>State</label>
               <select 
                 id="state"
                 value={filters.state}
                 onChange={(e) => handleFilterChange('state', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.95rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All States</option>
                 {states.map(state => (
@@ -1499,12 +1595,30 @@ const Page = () => {
             </div>
             
             <div className={styles.filterItem}>
-              <label htmlFor="district">District</label>
+              <label htmlFor="district" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.95rem'
+              }}>District</label>
               <select 
                 id="district"
                 value={filters.district}
                 onChange={(e) => handleFilterChange('district', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.95rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Districts</option>
                 {districts.map(district => (
@@ -1514,12 +1628,30 @@ const Page = () => {
             </div>
             
             <div className={styles.filterItem}>
-              <label htmlFor="subdistrict">Subdistrict</label>
+              <label htmlFor="subdistrict" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.95rem'
+              }}>Subdistrict</label>
               <select 
                 id="subdistrict"
                 value={filters.subdistrict}
                 onChange={(e) => handleFilterChange('subdistrict', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.95rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Subdistricts</option>
                 {subdistricts.map(subdistrict => (
@@ -1529,12 +1661,30 @@ const Page = () => {
             </div>
 
             <div className={styles.filterItem}>
-              <label htmlFor="village">Village</label>
+              <label htmlFor="village" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.95rem'
+              }}>Village</label>
               <select 
                 id="village"
                 value={filters.village}
                 onChange={(e) => handleFilterChange('village', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.95rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Villages</option>
                 {villages.map(village => (
@@ -1543,172 +1693,160 @@ const Page = () => {
               </select>
             </div>
             
-            <div className={styles.filterActions}>
-              <button onClick={resetFilters} className={styles.resetBtn}>
-                Reset Filters
+            <div className={styles.filterActions} style={{
+              display: 'flex',
+              gap: '1rem',
+              marginTop: '1.5rem'
+            }}>
+              <button onClick={resetFilters} style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#f5f5f5',
+                color: '#333',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                  <path d="M3 3v5h5"/>
+                </svg>
+                Reset
               </button>
-              <button onClick={goToMyLocation} className={styles.myLocationBtn}>
+              <button onClick={goToMyLocation} style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#1976D2',
+                color: 'white',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
                 My Location
               </button>
             </div>
           </div>
         </div>
-        
-        {showDirections ? (
-          <div className={styles.directionsPanel}>
-            <div className={styles.directionsPanelHeader}>
-              <h3>Directions</h3>
-              <button 
-                onClick={handleCloseDirections} 
-                className={styles.closeBtn}
-                aria-label="Close directions"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className={styles.directionsContent}>
-              {selectedLocation && (
-                <div className={styles.destination}>
-                  <h4>Destination:</h4>
-                  <p>{cscLocations.find(loc => loc.id === selectedLocation)?.name}</p>
-                  <p className={styles.locationAddress}>
-                    {cscLocations.find(loc => loc.id === selectedLocation)?.address}
-                  </p>
-                </div>
-              )}
-              
-              <div className={styles.directionsOptions}>
-                <div className={styles.optionsTabs}>
-                  <button 
-                    className={`${styles.optionTab} ${directionsFrom === 'current' ? styles.activeTab : ''}`}
-                    onClick={() => setDirectionsFrom('current')}
-                  >
-                    Current Location
-                  </button>
-                  <button 
-                    className={`${styles.optionTab} ${directionsFrom === 'search' ? styles.activeTab : ''}`}
-                    onClick={() => setDirectionsFrom('search')}
-                  >
-                    Search Location
-                  </button>
-                </div>
-                
-                {directionsFrom === 'current' ? (
-                  <div className={styles.currentLocationOption}>
-                    <p>From: {currentLocation ? 'Your Current Location' : 'Locating you...'}</p>
-                    <button 
-                      onClick={getDirectionsFromCurrentLocation} 
-                      className={styles.getDirectionsBtn}
-                      disabled={!currentLocation || !selectedLocation}
-                    >
-                      Get Directions
-                    </button>
-                  </div>
-                ) : (
-                  <div className={styles.searchLocationOption}>
-                    <div className={styles.searchBox}>
-                      <input
-                        type="text"
-                        placeholder="Enter a starting location"
-                        value={startSearchQuery}
-                        onChange={(e) => {
-                          setStartSearchQuery(e.target.value);
-                          searchLocations(e.target.value);
-                        }}
-                        onFocus={() => {
-                          if (searchResults.length > 0) setShowSearchDropdown(true);
-                        }}
-                        className={styles.searchInput}
-                      />
-                      {isSearching && <span className={styles.searchingIndicator}>Searching...</span>}
-                      
-                      {showSearchDropdown && searchResults.length > 0 && (
-                        <div className={styles.searchResultsDropdown}>
-                          {searchResults.map((result, index) => (
-                            <div 
-                              key={index} 
-                              className={styles.searchResultItem}
-                              onClick={() => selectSearchResult(result)}
-                            >
-                              <span>{result.description}</span>
-                              <small>{result.terms.map((term: { value: string }) => term.value).join(', ')}</small>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button 
-                      onClick={() => {
-                        if (startLocation && selectedLocation) {
-                          getRoute(startLocation, getSelectedLocationCoords());
-                        }
-                      }} 
-                      className={styles.getDirectionsBtn}
-                      disabled={!startLocation || !selectedLocation}
-                    >
-                      Get Directions
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {isRouteFetching && (
-                <div className={styles.loadingRoute}>
-                  <div className={styles.spinner}></div>
-                  <p>Finding the best route...</p>
-                </div>
-              )}
-              
-              {route && (
-                <div className={styles.routeInfo}>
-                  <div className={styles.routeSummary}>
-                    <div className={styles.routeMetric}>
-                      <span className={styles.routeMetricValue}>
-                        {route.distance}
-                      </span>
-                      <span className={styles.routeMetricLabel}>Distance</span>
-                    </div>
-                    <div className={styles.routeMetric}>
-                      <span className={styles.routeMetricValue}>
-                        {route.duration}
-                      </span>
-                      <span className={styles.routeMetricLabel}>Duration</span>
-                    </div>
-                  </div>
-                  <div className={styles.routeTips}>
-                    <p>Follow the green route to reach your destination.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.locationsList}>
-            <h3>CSC Locations {filteredLocations.length > 0 ? `(${filteredLocations.length})` : ''}</h3>
-            
-            {filteredLocations.length === 0 ? (
-              <div className={styles.noResults}>No CSCs found with current filters</div>
-            ) : (
-              <ul>
-                {filteredLocations.map((location) => (
-                  <li 
-                    key={location.id}
-                    className={`${styles.locationItem} ${selectedLocation === location.id ? styles.selected : ''}`}
-                    onClick={() => handleLocationClick(location)}
-                  >
-                    <div className={styles.locationContent}>
-                      <h4>{location.name}</h4>
-                      <p className={styles.locationAddress}>{location.address}</p>
-                      <p className={styles.locationRegion}>{location.subdistrict}, {location.district}</p>
-                      <div className={styles.services}>
+
+        <div className={styles.locationsList} style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          padding: '1.5rem',
+          flex: '0 0 45%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <h3 style={{
+            margin: '0 0 1rem 0',
+            color: '#1a3a5f',
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            paddingBottom: '0.5rem',
+            borderBottom: '2px solid #e3f2fd'
+          }}>CSC Locations {filteredLocations.length > 0 ? `(${filteredLocations.length})` : ''}</h3>
+          
+          {filteredLocations.length === 0 ? (
+            <div style={{
+              padding: '2rem',
+              textAlign: 'center',
+              color: '#666',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              flex: 1
+            }}>No CSCs found with current filters</div>
+          ) : (
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              {filteredLocations.map((location) => (
+                <li 
+                  key={location.id}
+                  className={`${styles.locationItem} ${selectedLocation === location.id ? styles.selected : ''}`}
+                  onClick={() => handleLocationClick(location)}
+                  style={{
+                    backgroundColor: selectedLocation === location.id ? '#e3f2fd' : 'white',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '1px solid #e0e0e0'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{
+                        margin: '0 0 0.5rem 0',
+                        color: '#1a3a5f',
+                        fontSize: '1.1rem',
+                        fontWeight: '600'
+                      }}>{location.name}</h4>
+                      <p style={{
+                        margin: '0 0 0.25rem 0',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>{location.address}</p>
+                      <p style={{
+                        margin: '0 0 0.5rem 0',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>{location.subdistrict}, {location.district}</p>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem'
+                      }}>
                         {location.services.slice(0, 3).map((service, idx) => (
-                          <span key={idx} className={styles.serviceTag}>{service}</span>
+                          <span key={idx} style={{
+                            backgroundColor: '#e3f2fd',
+                            color: '#1976D2',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500'
+                          }}>{service}</span>
                         ))}
                         {location.services.length > 3 && (
-                          <span className={styles.serviceTag}>+{location.services.length - 3} more</span>
-                        )})
+                          <span style={{
+                            backgroundColor: '#e3f2fd',
+                            color: '#1976D2',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500'
+                          }}>+{location.services.length - 3} more</span>
+                        )}
                       </div>
                     </div>
                     <button 
@@ -1716,18 +1854,34 @@ const Page = () => {
                         e.stopPropagation();
                         handleShowDirections(location.id);
                       }}
-                      className={styles.directionsBtn}
+                      style={{
+                        backgroundColor: '#1976D2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.9rem',
+                        fontWeight: '500'
+                      }}
                       aria-label="Get directions"
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
                       Directions
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>      
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
