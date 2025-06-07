@@ -1,9 +1,10 @@
 "use client"
 
-import { Bell, Search, Menu, Globe, ChevronDown, ChevronRight, Plus, Settings, LogOut, User } from "lucide-react"
+import { Bell, Search, Menu, ChevronRight, Plus, Settings, LogOut, User } from "lucide-react"
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import GeminiChatbot from "@/components/GeminiChatbot"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { SetupProfileDialog } from "./setup-profile-dialog"
 import GoogleTranslate from "@/components/google-translate"
-import GeminiChatbot from "@/components/GeminiChatbot"
 
 interface Profile {
   id: string
@@ -30,12 +30,9 @@ export function Header() {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState("English")
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
-  const [profiles, setProfiles] = useState<Profile[]>([
-    { id: "1", name: "Achintya", avatar: undefined } // Fixed syntax error
-  ])
-  const [detectedText, setDetectedText] = useState("") // ✅ Added missing state
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false) // ✅ Added missing state
-
+  const [profiles, setProfiles] = useState<Profile[]>([{ id: "1", name: "Achintya" }])
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [detectedText, setDetectedText] = useState("");
   const handleAddProfile = (newProfile: Profile) => {
     setProfiles([...profiles, newProfile])
     setIsProfileDialogOpen(false)
@@ -43,22 +40,22 @@ export function Header() {
 
   const handleRunPython = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/python/run-python")
-      console.log("Detected res:", res)
-      const data = await res.json()
-      console.log("Detected data:", data)
+      const res = await fetch("http://localhost:4000/api/python/run-python");
+      console.log("Detected res:", res);
+      const data = await res.json();
+      console.log("Detected data:", data);
       if (data.output) {
-        const text = data.output.trim() // Use the final predicted string
-        console.log("Detected Text:", text) // Print the detected text
-        setDetectedText(text)
-        setIsChatbotOpen(true) // Open chatbot after receiving detected text
+        const text = data.output.trim(); // Use the final predicted string
+        console.log("Detected Text:", text); // Print the detected text
+        setDetectedText(text);
+        setIsChatbotOpen(true); // Open chatbot after receiving detected text
       } else {
-        console.error("Invalid response format:", data)
+        console.error("Invalid response format:", data);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     }
-  }
+  };
 
   return (
     <>
@@ -89,14 +86,7 @@ export function Header() {
 
           {/* Right Section */}
           <div className="flex items-center gap-5">
-            {/* <Button
-              variant="outline"
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
-            >
-              <Image src="/ISL.png" alt="ISL Chatbot" width={20} height={20} />
-              ISL Chatbot
-            </Button> */}
-             <Button
+            <Button
               onClick={handleRunPython}
               variant="outline"
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
@@ -104,11 +94,9 @@ export function Header() {
               <Image src="/ISL.png" alt="ISL Chatbot" width={20} height={20} />
               ISL Chatbot
             </Button>
-
-            {/* Render GeminiChatbot */}
+          {/* Render GeminiChatbot */}
             <GeminiChatbot isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} detectedText={detectedText} />
-
-
+    
             {/* Notifications Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -128,46 +116,6 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Language Dropdown
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow"
-                >
-                  <Globe className="h-5 w-5 text-gray-600 group-hover:text-gray-700 transition-colors duration-200" />
-                  <span className="font-semibold">{currentLanguage}</span>
-                  <ChevronDown className="h-4 w-4 ml-1 text-gray-500 group-hover:text-gray-700 transition-transform duration-200 group-hover:rotate-180" />
-                </Button>
-              </DropdownMenuTrigger> */}
-              {/* <DropdownMenuContent align="end" className="w-56 p-2 shadow-xl rounded-lg bg-white">
-                <DropdownMenuLabel className="text-center font-bold text-gray-700 pb-2">
-                  Select Language
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-gray-200" />
-                {[
-                  "English",
-                  "हिन्दी (Hindi)",
-                  "मराठी (Marathi)",
-                  "தமிழ் (Tamil)",
-                  "తెలుగు (Telugu)",
-                  "ગુજરાતી (Gujarati)",
-                  "বাংলা (Bengali)",
-                  "ਪੰਜਾਬੀ (Punjabi)",
-                  "മലയാളം (Malayalam)",
-                  "ଓଡ଼ିଆ (Odia)",
-                ].map((lang) => (
-                  <DropdownMenuItem
-                    key={lang}
-                    onClick={() => setCurrentLanguage(lang.split(" ")[0])}
-                    className="rounded-md hover:bg-gray-100 focus:bg-gray-200 transition-colors duration-200"
-                  >
-                    {lang}
-                  </DropdownMenuItem>
-                ))} */}
-              {/* </DropdownMenuContent>
-             
-            </DropdownMenu> */}
             <GoogleTranslate/>
             {/* Profile Dropdown */}
             <DropdownMenu>

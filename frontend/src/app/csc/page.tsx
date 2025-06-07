@@ -39,13 +39,24 @@ const toLatLngLiteral = (coord: [number, number] | { lat: number; lng: number })
   return coord;
 };
 
+// 1. Red pin SVG for markers
+const getRedPinSVG = (selected: boolean) =>
+  `data:image/svg+xml;utf8,<svg width='36' height='48' viewBox='0 0 36 48' fill='none' xmlns='http://www.w3.org/2000/svg'><g filter='url(%23shadow)'><path d='M18 47C18 47 34 29.5 34 18C34 8.61116 26.3888 1 17.9999 1C9.61116 1 2 8.61116 2 18C2 29.5 18 47 18 47Z' fill='%23EA4335' stroke='white' stroke-width='2'/><circle cx='18' cy='18' r='7' fill='white'/><circle cx='18' cy='18' r='5' fill='%23EA4335'/></g><defs><filter id='shadow' x='0' y='0' width='36' height='48' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'><feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='black' flood-opacity='0.2'/></filter></defs></svg>`;
+
+// 2. Glowing blue dot for user location (SVG + CSS animation)
+const userMarkerHTML = `<div style="position:relative;width:24px;height:24px;">
+  <div style="position:absolute;top:0;left:0;width:24px;height:24px;border-radius:50%;background:rgba(25,118,210,0.25);animation:pulse 1.5s infinite;"></div>
+  <div style="position:absolute;top:6px;left:6px;width:12px;height:12px;border-radius:50%;background:#1976D2;border:2px solid white;"></div>
+  <style>@keyframes pulse{0%{transform:scale(1);opacity:0.6;}70%{transform:scale(2);opacity:0;}100%{transform:scale(1);opacity:0;}}</style>
+</div>`;
+
 const Page = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const [userMarker, setUserMarker] = useState<google.maps.Marker | null>(null);
+  const [userMarker, setUserMarker] = useState<google.maps.Marker | google.maps.marker.AdvancedMarkerElement | null>(null);
   const [filters, setFilters] = useState<LocationFilters>({
     state: "",
     district: "",
@@ -797,7 +808,6 @@ const Page = () => {
     
     setFilters(updatedFilters);
     
-    // If there's only one filtered location after applying filter, select it
     const newFilteredLocations = cscLocations.filter(csc => {
       return (!updatedFilters.state || csc.state === updatedFilters.state) &&
              (!updatedFilters.district || csc.district === updatedFilters.district) &&
@@ -805,19 +815,14 @@ const Page = () => {
              (!updatedFilters.village || csc.village === updatedFilters.village);
     });
     
-    if (newFilteredLocations.length === 1) {
-      setSelectedLocation(newFilteredLocations[0].id);
-      if (map) {
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend({ 
-          lat: newFilteredLocations[0].coordinates[1], 
-          lng: newFilteredLocations[0].coordinates[0] 
-        });
-        map.fitBounds(bounds);
+    if (map && newFilteredLocations.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      newFilteredLocations.forEach(loc => bounds.extend({ lat: loc.coordinates[1], lng: loc.coordinates[0] }));
+      map.fitBounds(bounds);
+      if (newFilteredLocations.length === 1) {
+        map.setZoom(14);
+        setSelectedLocation(newFilteredLocations[0].id);
       }
-    } else if (newFilteredLocations.length > 0) {
-      // Center map to show all filtered locations
-      updateMapBounds(newFilteredLocations);
     }
   };
 
@@ -1023,12 +1028,9 @@ const Page = () => {
     filteredLocations.forEach((location) => {
       // Create custom marker icon
       const markerIcon = {
-        url: selectedLocation === location.id ? 
-          'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32"%3e%3cpath fill="%231976D2" stroke="white" stroke-width="1" d="M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/%3e%3c/svg%3e'
-          :
-          'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32"%3e%3cpath fill="%231976D2" stroke="white" stroke-width="1" d="M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/%3e%3c/svg%3e',
-        scaledSize: new google.maps.Size(32, 42),
-        anchor: new google.maps.Point(16, 42)
+        url: getRedPinSVG(selectedLocation === location.id),
+        scaledSize: new google.maps.Size(36, 48),
+        anchor: new google.maps.Point(18, 47)
       };
 
       // Create marker
@@ -1090,37 +1092,20 @@ const Page = () => {
   // Add user location marker
   const addUserMarker = (mapInstance: google.maps.Map) => {
     if (!mapInstance || !currentLocation) return;
-    
     if (userMarker) {
-      userMarker.setMap(null);
-    }
-    
-    const marker = new google.maps.Marker({
-      position: { lat: currentLocation[1], lng: currentLocation[0] },
-      map: mapInstance,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: '#1976D2',
-        fillOpacity: 1,
-        strokeColor: '#FFFFFF',
-        strokeWeight: 2
+      if (userMarker instanceof google.maps.Marker) {
+        userMarker.setMap(null);
+      } else if ('map' in userMarker) {
+        userMarker.map = null;
       }
+    }
+    const div = document.createElement('div');
+    div.innerHTML = userMarkerHTML;
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      map: mapInstance,
+      position: { lat: currentLocation[1], lng: currentLocation[0] },
+      content: div.firstChild as HTMLElement
     });
-
-    const infoWindow = new google.maps.InfoWindow({
-      content: `
-        <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
-          <p style="margin: 5px 0; color: #333;">This is your current position</p>
-        </div>
-      `
-    });
-
-    marker.addListener('click', () => {
-      infoWindow.open(mapInstance, marker);
-    });
-
     setUserMarker(marker);
   };
 

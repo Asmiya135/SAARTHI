@@ -11,7 +11,8 @@ const __dirname = path.dirname(__filename);
 
 router.get("/run-python", (req, res) => {
     const pythonScriptPath = path.join(__dirname, "../../islllll/jasonified.py");
-    const pythonPath = path.resolve(__dirname, "../forisl/Scripts/python.exe");
+    // For Mac, use the virtual environment's python path
+    const pythonPath = path.resolve(__dirname, "../forisl/bin/python3.11");
     const scriptPath = path.resolve(__dirname, "../../islllll/jasonified.py");
 
     exec(`"${pythonPath}" "${scriptPath}"`, (error, stdout, stderr) => {
