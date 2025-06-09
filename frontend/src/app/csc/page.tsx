@@ -930,7 +930,7 @@ const Page = () => {
         map.panTo(center);
         
         setTimeout(() => {
-          map.fitBounds(bounds);
+        map.fitBounds(bounds);
         }, 300);
       }
     } else if (newFilteredLocations.length > 0) {
@@ -1313,10 +1313,10 @@ const Page = () => {
     // Create info window content
     const content = document.createElement('div');
     content.innerHTML = `
-      <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
-        <p style="margin: 5px 0; color: #333;">This is your current position</p>
-      </div>
+        <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
+          <p style="margin: 5px 0; color: #333;">This is your current position</p>
+        </div>
     `;
 
     const infoWindow = new google.maps.InfoWindow({
@@ -1540,7 +1540,7 @@ const Page = () => {
         height: '100%'
       }}>
         <div className={styles.filterSection} style={{
-          flex: '0 0 55%',
+          // flex: '0 0 50%',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -1549,7 +1549,7 @@ const Page = () => {
           <h2 style={{
             fontSize: '1.5rem',
             color: '#1a3a5f',
-            marginBottom: '1.5rem',
+            marginBottom: '1rem',
             fontWeight: '600',
             textAlign: 'center',
             padding: '0.5rem',
@@ -1557,17 +1557,18 @@ const Page = () => {
           }}>Find Common Service Centers</h2>
           
           <div className={styles.filters} style={{
-            overflowY: 'auto',
-            flex: 1,
-            paddingRight: '0.5rem'
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1rem',
+            padding: '0.5rem'
           }}>
             <div className={styles.filterItem}>
               <label htmlFor="state" style={{
                 display: 'block',
-                marginBottom: '0.5rem',
+                marginBottom: '0.25rem',
                 color: '#1a3a5f',
                 fontWeight: '500',
-                fontSize: '0.95rem'
+                fontSize: '0.9rem'
               }}>State</label>
               <select 
                 id="state"
@@ -1576,11 +1577,11 @@ const Page = () => {
                 className={styles.selectInput}
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.5rem',
                   borderRadius: '8px',
                   border: '1px solid #e0e0e0',
                   backgroundColor: 'white',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -1597,10 +1598,10 @@ const Page = () => {
             <div className={styles.filterItem}>
               <label htmlFor="district" style={{
                 display: 'block',
-                marginBottom: '0.5rem',
+                marginBottom: '0.25rem',
                 color: '#1a3a5f',
                 fontWeight: '500',
-                fontSize: '0.95rem'
+                fontSize: '0.9rem'
               }}>District</label>
               <select 
                 id="district"
@@ -1609,11 +1610,11 @@ const Page = () => {
                 className={styles.selectInput}
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.5rem',
                   borderRadius: '8px',
                   border: '1px solid #e0e0e0',
                   backgroundColor: 'white',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -1630,10 +1631,10 @@ const Page = () => {
             <div className={styles.filterItem}>
               <label htmlFor="subdistrict" style={{
                 display: 'block',
-                marginBottom: '0.5rem',
+                marginBottom: '0.25rem',
                 color: '#1a3a5f',
                 fontWeight: '500',
-                fontSize: '0.95rem'
+                fontSize: '0.9rem'
               }}>Subdistrict</label>
               <select 
                 id="subdistrict"
@@ -1642,11 +1643,11 @@ const Page = () => {
                 className={styles.selectInput}
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.5rem',
                   borderRadius: '8px',
                   border: '1px solid #e0e0e0',
                   backgroundColor: 'white',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -1663,10 +1664,10 @@ const Page = () => {
             <div className={styles.filterItem}>
               <label htmlFor="village" style={{
                 display: 'block',
-                marginBottom: '0.5rem',
+                marginBottom: '0.25rem',
                 color: '#1a3a5f',
                 fontWeight: '500',
-                fontSize: '0.95rem'
+                fontSize: '0.9rem'
               }}>Village</label>
               <select 
                 id="village"
@@ -1675,11 +1676,11 @@ const Page = () => {
                 className={styles.selectInput}
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
+                  padding: '0.5rem',
                   borderRadius: '8px',
                   border: '1px solid #e0e0e0',
                   backgroundColor: 'white',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -1692,66 +1693,69 @@ const Page = () => {
                 ))}
               </select>
             </div>
+          </div>
             
-            <div className={styles.filterActions} style={{
+          <div className={styles.filterActions} style={{
+            display: 'flex',
+            gap: '1rem',
+            marginTop: '1rem',
+            padding: '0 0.5rem'
+          }}>
+            <button onClick={resetFilters} style={{
+              flex: 1,
+              padding: '0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#f5f5f5',
+              color: '#333',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
               display: 'flex',
-              gap: '1rem',
-              marginTop: '1.5rem'
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem'
             }}>
-              <button onClick={resetFilters} style={{
-                flex: 1,
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: '#f5f5f5',
-                color: '#333',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                  <path d="M3 3v5h5"/>
-                </svg>
-                Reset
-              </button>
-              <button onClick={goToMyLocation} style={{
-                flex: 1,
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: '#1976D2',
-                color: 'white',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <circle cx="12" cy="12" r="4"/>
-                </svg>
-                My Location
-              </button>
-            </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              Reset
+            </button>
+            <button onClick={goToMyLocation} style={{
+              flex: 1,
+              padding: '0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#1976D2',
+              color: 'white',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+              My Location
+            </button>
           </div>
         </div>
-
+        
         <div className={styles.locationsList} style={{
           backgroundColor: 'white',
           borderRadius: '12px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           padding: '1.5rem',
-          flex: '0 0 45%',
+          flex: '1',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
@@ -1764,8 +1768,8 @@ const Page = () => {
             paddingBottom: '0.5rem',
             borderBottom: '2px solid #e3f2fd'
           }}>CSC Locations {filteredLocations.length > 0 ? `(${filteredLocations.length})` : ''}</h3>
-          
-          {filteredLocations.length === 0 ? (
+            
+            {filteredLocations.length === 0 ? (
             <div style={{
               padding: '2rem',
               textAlign: 'center',
@@ -1785,11 +1789,11 @@ const Page = () => {
               overflowY: 'auto',
               flex: 1
             }}>
-              {filteredLocations.map((location) => (
-                <li 
-                  key={location.id}
-                  className={`${styles.locationItem} ${selectedLocation === location.id ? styles.selected : ''}`}
-                  onClick={() => handleLocationClick(location)}
+                {filteredLocations.map((location) => (
+                  <li 
+                    key={location.id}
+                    className={`${styles.locationItem} ${selectedLocation === location.id ? styles.selected : ''}`}
+                    onClick={() => handleLocationClick(location)}
                   style={{
                     backgroundColor: selectedLocation === location.id ? '#e3f2fd' : 'white',
                     borderRadius: '8px',
@@ -1876,11 +1880,11 @@ const Page = () => {
                       Directions
                     </button>
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
       </div>
     </div>
   );
