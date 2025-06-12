@@ -1,10 +1,10 @@
-# SAARTHI - AI-Powered Government Welfare Scheme Manager
+# ABHUDAYA - AI-Powered Government Welfare Scheme Manager
 
 ## Theory in Brief
-SAARTHI is a revolutionary platform that merges advanced AI with graph-based data modeling to simplify access to government welfare schemes. At its core, SAARTHI dynamically connects scheme data—scraped directly from government websites—using a graph-based tracking model. This sophisticated approach allows the system to semantically map user profiles to the most relevant schemes. Powered by state-of-the-art natural language processing (NLP) and optical character recognition (OCR) technologies, SAARTHI delivers real-time, multi-modal communication across text, voice, and sign language interfaces.
+ABHUDAYA is a revolutionary platform that merges advanced AI with graph-based data modeling to simplify access to government welfare schemes. At its core, ABHUDAYA dynamically connects scheme data—scraped directly from government websites—using a graph-based tracking model. This sophisticated approach allows the system to semantically map user profiles to the most relevant schemes. Powered by state-of-the-art natural language processing (NLP) and optical character recognition (OCR) technologies, ABHUDAYA delivers real-time, multi-modal communication across text, voice, and sign language interfaces.
 
 ## Solution Overview
-SAARTHI is engineered as an end-to-end technical solution that redefines how users interact with government welfare schemes:
+ABHUDAYA is engineered as an end-to-end technical solution that redefines how users interact with government welfare schemes:
 
 - **Graph-Based Data Model:**  
   Utilizes a dynamic graph-based tracking model integrated with Gemini-2.0-Flash. Scheme data scraped from government portals is organized into nodes and edges, creating an evolving, real-time map of available welfare schemes.
@@ -16,7 +16,7 @@ SAARTHI is engineered as an end-to-end technical solution that redefines how use
   Qwen OCR extracts text from uploaded documents, and Gemini-2.0-Flash processes this data for seamless document verification and eligibility checks.
 
 - **Geospatial Mapping Integration:**  
-  By integrating with Ola Maps, SAARTHI provides real-time location data, enabling users to pinpoint nearby Common Service Centers (CSCs) with detailed routing, tagging, and event control features.
+  By integrating with Google Maps, ABHUDAYA provides real-time location data, enabling users to pinpoint nearby Common Service Centers (CSCs) with detailed routing, tagging, and event control features.
 
 - **Voice Agent Capabilities:**  
   A dedicated voice-based chatbot in Hindi, Marathi, and English offers an intuitive, hands-free interaction mode.
@@ -38,7 +38,7 @@ SAARTHI is engineered as an end-to-end technical solution that redefines how use
   - Uses Gemini-2.0-Flash to verify and validate document details for eligibility.
 
 - **CSC and Kiosk Locator:**  
-  - Integrates with Ola Maps for precise geospatial tracking.
+  - Integrates with Google Maps for precise geospatial tracking.
   - Offers comprehensive routing, tagging, and navigation features to locate the nearest CSC or kiosk.
 
 - **Voice Agent Integration:**  
@@ -56,7 +56,7 @@ SAARTHI is engineered as an end-to-end technical solution that redefines how use
 ### Backend
 - **Node.js & Express.js:** Handles API requests, business logic, and server-side operations.
 - **MongoDB:** Stores structured user data and dynamic scheme details.
-- **Firebase Authentication:** Ensures secure and reliable user authentication.
+- **Google OAuth Authentication:** Ensures secure and reliable user authentication.
 - **GraphQL:** Facilitates efficient and precise data fetching between client and server.
 
 ### AI & Data Processing
@@ -64,19 +64,19 @@ SAARTHI is engineered as an end-to-end technical solution that redefines how use
 - **Graph-Based Tracking Model:** Integrates scheme data into a dynamic, real-time graph.
 - **Qwen OCR Model:** Extracts text from images and documents for automated verification.
 - **Transcription & Translation APIs:** Enable multi-language interactions and content accessibility.
-- **Ola Maps Integration:** Provides geospatial mapping and route optimization for CSC and kiosk location services.
+- **Google Maps Integration:** Provides geospatial mapping and route optimization for CSC and kiosk location services.
 
 ## How It Works
 1. **User Sign-Up & Profile Creation:**  
    Users register and create profiles by providing key details such as demographics, income, and occupation.
 2. **Graph-Based AI Chatbot Interaction:**  
-   SAARTHI processes user queries through a graph-based model combined with Gemini-2.0-Flash. By leveraging real-time data scraped from government websites, it effectively maps user profiles to the most relevant schemes.
+   ABHUDAYA processes user queries through a graph-based model combined with Gemini-2.0-Flash. By leveraging real-time data scraped from government websites, it effectively maps user profiles to the most relevant schemes.
 3. **Document Upload & Verification:**  
    Users upload their documents, which are processed via Qwen OCR. Gemini-2.0-Flash then verifies the extracted data to ensure eligibility and compliance.
 4. **Scheme Recommendation:**  
    The system suggests tailored government welfare schemes based on user profiles and verified information.
 5. **CSC & Kiosk Locator:**  
-   For users with limited connectivity, SAARTHI integrates with Ola Maps to locate nearby CSCs and kiosks, complete with detailed navigation and routing features.
+   For users with limited connectivity, ABHUDAYA integrates with Ola Maps to locate nearby CSCs and kiosks, complete with detailed navigation and routing features.
 6. **Voice Agent Interaction:**  
    A dedicated voice-based interface enables interactive conversations in Hindi, Marathi, and English, catering to various user needs.
 7. **Future Expansion:**  
@@ -101,7 +101,7 @@ Dive into our interactive world!
   ![Chatbot](public/Chatbot.png)
 
 **Demo Videos:**  
-  Watch our demo videos to see SAARTHI in action—from graph-based data processing to real-time, multi-modal communication. [Link to demo videos]
+  Watch our demo videos to see ABHUDAYA in action—from graph-based data processing to real-time, multi-modal communication. [https://youtu.be/B_AyO3bvZO8]
 
 ## Contributors
 We welcome contributions from passionate developers and AI enthusiasts. If you're interested in collaborating, please submit a pull request or reach out to our team.
