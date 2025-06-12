@@ -13,8 +13,7 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
   The multi-modal AI assistant interacts via both text and voice in 23 Indian languages, enhanced by a custom dataset for Indian Sign Language (ISL). This ensures every user, regardless of language or ability, can navigate the system with ease.
 
 - **Automated Eligibility & Document Verification:**  
-  Qwen OCR extracts text from uploaded documents, and Gemini-2.0-Flash processes this data for seamless document verification and eligibility checks.
-
+  Text extracting and seamless document verification done using Vertex Gemini AI 
 - **Geospatial Mapping Integration:**  
   By integrating with Google Maps, ABHUDAYA provides real-time location data, enabling users to pinpoint nearby Common Service Centers (CSCs) with detailed routing, tagging, and event control features.
 
@@ -79,7 +78,7 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
 2. **Graph-Based AI Chatbot Interaction:**  
    ABHUDAYA processes user queries through a graph-based model combined with Gemini-2.0-Flash. By leveraging real-time data scraped from government websites, it effectively maps user profiles to the most relevant schemes.
 3. **Document Upload & Verification:**  
-   Users upload their documents, which are processed via Qwen OCR. Gemini-2.0-Flash then verifies the extracted data to ensure eligibility and compliance.
+   Users upload their documents, which are processed via Verex Gemini AI, which then verifies the extracted data to ensure eligibility and compliance.
 4. **Scheme Recommendation:**  
    The system suggests tailored government welfare schemes based on user profiles and verified information.
 5. **CSC & Kiosk Locator:**  
