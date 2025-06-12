@@ -58,13 +58,20 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
 - **MongoDB:** Stores structured user data and dynamic scheme details.
 - **Google OAuth Authentication:** Ensures secure and reliable user authentication.
 - **GraphQL:** Facilitates efficient and precise data fetching between client and server.
-
+- **Google Cloud STT:** Efficiently converts spech to text.
+- **Google Translate:** Translates website into users prefered language.
+  
 ### AI & Data Processing
 - **Gemini-2.0-Flash (LLM):** Powers advanced NLP for the chatbot, document processing, and recommendation systems.
 - **Graph-Based Tracking Model:** Integrates scheme data into a dynamic, real-time graph.
 - **Qwen OCR Model:** Extracts text from images and documents for automated verification.
 - **Transcription & Translation APIs:** Enable multi-language interactions and content accessibility.
 - **Google Maps Integration:** Provides geospatial mapping and route optimization for CSC and kiosk location services.
+-**Firebase Storage:** For Secure Document Storage.
+
+### Deployment Tools
+- **Google IDX:** Used for Deployment of our solution.
+- **Google Cloud Platform:** Used for Deployment of our solution.
 
 ## How It Works
 1. **User Sign-Up & Profile Creation:**  
