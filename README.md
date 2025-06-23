@@ -33,7 +33,7 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
   - Utilizes advanced NLP algorithms to interpret and respond to user queries in both text and voice formats.
 
 - **Automated Document Verification:**  
-  - Employs Qwen OCR to extract text from documents.
+  - Employs Vertex AI' Gemini-2.5-Flash to extract text from documents.
   - Uses Gemini-2.0-Flash to verify and validate document details for eligibility.
 
 - **CSC and Kiosk Locator:**  
@@ -63,7 +63,7 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
 ### AI & Data Processing
 - **Gemini-2.0-Flash (LLM):** Powers advanced NLP for the chatbot, document processing, and recommendation systems.
 - **Graph-Based Tracking Model:** Integrates scheme data into a dynamic, real-time graph.
-- **Qwen OCR Model:** Extracts text from images and documents for automated verification.
+- **Gemini-2.5-Flash** Extracts text from images and documents for automated verification.
 - **Transcription & Translation APIs:** Enable multi-language interactions and content accessibility.
 - **Google Maps Integration:** Provides geospatial mapping and route optimization for CSC and kiosk location services.
 -**Firebase Storage:** For Secure Document Storage.
