@@ -78,7 +78,7 @@ ABHUDAYA is engineered as an end-to-end technical solution that redefines how us
 2. **Graph-Based AI Chatbot Interaction:**  
    ABHUDAYA processes user queries through a graph-based model combined with Gemini-2.0-Flash. By leveraging real-time data scraped from government websites, it effectively maps user profiles to the most relevant schemes.
 3. **Document Upload & Verification:**  
-   Users upload their documents, which are processed via Verex Gemini AI, which then verifies the extracted data to ensure eligibility and compliance.
+   Users upload their documents, which are processed via Vertex Gemini AI, which then verifies the extracted data to ensure eligibility and compliance.
 4. **Scheme Recommendation:**  
    The system suggests tailored government welfare schemes based on user profiles and verified information.
 5. **CSC & Kiosk Locator:**  
