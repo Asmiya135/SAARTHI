@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { Home, FileText, Layers } from "lucide-react"
 
 const sidebarItems = [
-  { name: "Home", icon: Home, href: "/" },
+  { name: "Home", icon: Home, href: "/home" },
   { name: "Schemes", icon: Layers, href: "/schemess" },
   { name: "Documents", icon: FileText, href: "/documents" },
   { name: "Common Service Center", icon: Layers, href: "/csc" }

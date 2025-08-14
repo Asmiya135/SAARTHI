@@ -2,6 +2,29 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import styles from './page.module.css'
+import { Loader } from '@googlemaps/js-api-loader'
+
+// Add type definitions for AdvancedMarkerElement
+declare global {
+  namespace google.maps {
+    class AdvancedMarkerElement {
+      constructor(options: {
+        map?: Map;
+        position: LatLngLiteral;
+        title?: string;
+      });
+      map: Map | null;
+      position: LatLngLiteral;
+      title?: string;
+      addListener(event: string, handler: Function): void;
+    }
+  }
+}
+
+// Add type for marker library
+interface MarkerLibrary {
+  AdvancedMarkerElement: typeof google.maps.AdvancedMarkerElement;
+}
 
 type CSC = {
   id: number;
@@ -24,20 +47,27 @@ type LocationFilters = {
   village: string;
 };
 
-type RouteInfo = {
-  distance: number;
-  duration: number;
-  geometry: any;
+// Define route state type
+interface RouteState {
+  distance: string;
+  duration: string;
+}
+
+// Helper to convert [number, number] to LatLngLiteral
+const toLatLngLiteral = (coord: [number, number] | { lat: number; lng: number }): google.maps.LatLngLiteral => {
+  if (Array.isArray(coord)) {
+    return { lat: coord[1], lng: coord[0] };
+  }
+  return coord;
 };
 
 const Page = () => {
-  const mapRef = useRef(null);
-  const [olaMaps, setOlaMaps] = useState<any>(null);
-  const [map, setMap] = useState<any>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
-  const [userMarker, setUserMarker] = useState<any>(null);
+  const [userMarker, setUserMarker] = useState<any | null>(null);
   const [filters, setFilters] = useState<LocationFilters>({
     state: "",
     district: "",
@@ -50,12 +80,16 @@ const Page = () => {
   const [startSearchQuery, setStartSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [route, setRoute] = useState<RouteInfo | null>(null);
+  const [route, setRoute] = useState<RouteState | null>(null);
   const [routeLayer, setRouteLayer] = useState<any>(null);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [isRouteFetching, setIsRouteFetching] = useState<boolean>(false);
   const [directionsFrom, setDirectionsFrom] = useState<'current' | 'search'>('current');
+  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
 
   // Common Service Centers data
   const cscLocations: CSC[] = [
@@ -776,9 +810,98 @@ const Page = () => {
       updatedFilters.district = '';
       updatedFilters.subdistrict = '';
       updatedFilters.village = '';
+      
+      // If state is selected, zoom to that state's bounds
+      if (value && map) {
+        const stateLocations = cscLocations.filter(csc => csc.state === value);
+        if (stateLocations.length > 0) {
+          const bounds = new google.maps.LatLngBounds();
+          stateLocations.forEach(location => {
+            bounds.extend({ 
+              lat: location.coordinates[1], 
+              lng: location.coordinates[0] 
+            });
+          });
+
+          // Add padding to the bounds
+          const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+          
+          // Set zoom restrictions for state level
+          map.setOptions({
+            minZoom: 5,
+            maxZoom: 15,
+            restriction: {
+              latLngBounds: bounds,
+              strictBounds: false
+            }
+          });
+
+          // Smooth zoom to bounds
+          const currentZoom = map.getZoom() || 5;
+          const targetZoom = Math.min(7, currentZoom + 2); // Gradual zoom increase
+          
+          // First pan to center of bounds
+          const center = bounds.getCenter();
+          map.panTo(center);
+          
+          // Then smoothly zoom
+          setTimeout(() => {
+            map.fitBounds(bounds, padding);
+          }, 300);
+        }
+      } else {
+        // Reset restrictions when no state is selected
+        map?.setOptions({
+          minZoom: 4,
+          maxZoom: 18,
+          restriction: null
+        });
+      }
     } else if (field === 'district') {
       updatedFilters.subdistrict = '';
       updatedFilters.village = '';
+      
+      // If district is selected, zoom to that district's bounds
+      if (value && map) {
+        const districtLocations = cscLocations.filter(csc => 
+          csc.state === filters.state && csc.district === value
+        );
+        if (districtLocations.length > 0) {
+          const bounds = new google.maps.LatLngBounds();
+          districtLocations.forEach(location => {
+            bounds.extend({ 
+              lat: location.coordinates[1], 
+              lng: location.coordinates[0] 
+            });
+          });
+
+          // Add padding to the bounds
+          const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+          
+          // Set zoom restrictions for district level
+          map.setOptions({
+            minZoom: 7,
+            maxZoom: 18,
+            restriction: {
+              latLngBounds: bounds,
+              strictBounds: false
+            }
+          });
+
+          // Smooth zoom to bounds
+          const currentZoom = map.getZoom() || 7;
+          const targetZoom = Math.min(9, currentZoom + 2); // Gradual zoom increase
+          
+          // First pan to center of bounds
+          const center = bounds.getCenter();
+          map.panTo(center);
+          
+          // Then smoothly zoom
+          setTimeout(() => {
+            map.fitBounds(bounds, padding);
+          }, 300);
+        }
+      }
     } else if (field === 'subdistrict') {
       updatedFilters.village = '';
     }
@@ -796,511 +919,249 @@ const Page = () => {
     if (newFilteredLocations.length === 1) {
       setSelectedLocation(newFilteredLocations[0].id);
       if (map) {
-        map.flyTo({
-          center: newFilteredLocations[0].coordinates,
-          zoom: 14
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ 
+          lat: newFilteredLocations[0].coordinates[1], 
+          lng: newFilteredLocations[0].coordinates[0] 
         });
+        
+        // Smooth zoom to single location
+        const center = bounds.getCenter();
+        map.panTo(center);
+        
+        setTimeout(() => {
+        map.fitBounds(bounds);
+        }, 300);
       }
     } else if (newFilteredLocations.length > 0) {
       // Center map to show all filtered locations
-      centerMapToShowAll(newFilteredLocations);
+      updateMapBounds(newFilteredLocations);
     }
-  };
-
-  // Center map to show all filtered locations
-  const centerMapToShowAll = (locations: CSC[]) => {
-    if (!map || locations.length === 0) return;
-    
-    // Calculate bounds
-    const bounds = locations.reduce(
-      (bounds, location) => {
-        const [lng, lat] = location.coordinates;
-        bounds.minLng = Math.min(bounds.minLng, lng);
-        bounds.maxLng = Math.max(bounds.maxLng, lng);
-        bounds.minLat = Math.min(bounds.minLat, lat);
-        bounds.maxLat = Math.max(bounds.maxLat, lat);
-        return bounds;
-      },
-      { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-    );
-    
-    map.fitBounds([
-      [bounds.minLng, bounds.minLat], // Southwest corner
-      [bounds.maxLng, bounds.maxLat]  // Northeast corner
-    ], { padding: 50, maxZoom: 12 });
   };
 
   // Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
+      // Get initial location
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+          
+          // Update accuracy circle if it exists
+          if (map && position.coords.accuracy) {
+            const accuracyCircle = new google.maps.Circle({
+              map: map,
+              center: { lat: position.coords.latitude, lng: position.coords.longitude },
+              radius: position.coords.accuracy,
+              fillColor: "#4285F4",
+              fillOpacity: 0.15,
+              strokeColor: "#4285F4",
+              strokeOpacity: 0.5,
+              strokeWeight: 1,
+              zIndex: 999
+            });
+          }
         },
         (error) => {
-          console.error("Error getting location:", error);
-          // Default to central India as fallback
+          console.log("Location access denied or unavailable. Showing default view of India.");
           setCurrentLocation([78.9629, 20.5937]);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
         }
       );
+
+      // Watch for location changes
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+          
+          // Update accuracy circle if it exists
+          if (map && position.coords.accuracy) {
+            const accuracyCircle = new google.maps.Circle({
+              map: map,
+              center: { lat: position.coords.latitude, lng: position.coords.longitude },
+              radius: position.coords.accuracy,
+              fillColor: "#4285F4",
+              fillOpacity: 0.15,
+              strokeColor: "#4285F4",
+              strokeOpacity: 0.5,
+              strokeWeight: 1,
+              zIndex: 999
+            });
+          }
+        },
+        (error) => {
+          console.log("Error watching location:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+
+      // Cleanup watch on component unmount
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
     }
+  }, [map]); // Added map as dependency
+
+  // Initialize Google Maps with controls
+  useEffect(() => {
+    const loader = new Loader({
+      apiKey: "AIzaSyANzH7BnNww8JixawdiJ77ogUFxulYwXCE",
+      version: "weekly",
+      libraries: ["places", "marker"]
+    });
+
+    loader.load().then(async () => {
+      if (mapRef.current) {
+        const mapInstance = new google.maps.Map(mapRef.current, {
+          center: currentLocation ? toLatLngLiteral(currentLocation) : { lat: 20.5937, lng: 78.9629 },
+          zoom: 5,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+          gestureHandling: "cooperative",
+          mapId: "csc_map_id",
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ]
+        });
+
+        setMap(mapInstance);
+        setDirectionsService(new google.maps.DirectionsService());
+        setDirectionsRenderer(new google.maps.DirectionsRenderer({
+          map: mapInstance,
+          suppressMarkers: true,
+          polylineOptions: {
+            strokeColor: '#00A86B',
+            strokeWeight: 6,
+            strokeOpacity: 0.8
+          }
+        }));
+        setPlacesService(new google.maps.places.PlacesService(mapInstance));
+        setAutocompleteService(new google.maps.places.AutocompleteService());
+
+        // Add markers after map is loaded
+        google.maps.event.addListenerOnce(mapInstance, 'idle', () => {
+          addMarkers(mapInstance);
+          addUserMarker(mapInstance);
+        });
+      }
+    });
   }, []);
 
-  // Initialize map with improved layer styling (fixed to use only supported API methods)
-  useEffect(() => {
-    import('olamaps-web-sdk').then((module) => {
-      const { OlaMaps } = module;
-      const olaMapInstance = new OlaMaps({
-        apiKey: "RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb",
-      });
-      
-      setOlaMaps(olaMapInstance);
-      
-      const myMap = olaMapInstance.init({
-        style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
-        container: 'map',
-        center: currentLocation || [78.9629, 20.5937], // Default to central India
-        zoom: 5,
-      });
-      
-      setMap(myMap);
-      
-      // Add navigation controls with compass
-      const navigationControls = olaMapInstance.addNavigationControls({
-        showCompass: true,
-        showZoom: true,
-        visualizePitch: true,
-        position: 'top-right'
-      });
-      
-      myMap.addControl(navigationControls);
-      
-      // Wait for map to load before adding markers
-      myMap.on("load", () => {
-        addMarkers(olaMapInstance, myMap);
-        addUserMarker(olaMapInstance, myMap);
-        
-        // Add a map attribution control (built into maplibregl)
-        if (myMap.addControl && typeof myMap.addControl === 'function') {
-          try {
-            // Add built-in attribution control
-            const attributionControl = new (window as any).maplibregl.AttributionControl({
-              compact: true
-            });
-            myMap.addControl(attributionControl, 'bottom-right');
-          } catch (error) {
-            console.error("Error adding attribution control:", error);
-          }
-        }
-      });
-    });
-  }, [currentLocation]);
+  // Get route between two points
+  const getRoute = async (start: [number, number], end: [number, number]) => {
+    if (!directionsService || !directionsRenderer) return;
 
-  // Clear existing route from map
-  const clearRoute = () => {
-    if (map) {
-      try {
-        // Remove all layers associated with route
-        if (Array.isArray(routeLayer)) {
-          routeLayer.forEach(layerId => {
-            if (map.getLayer(layerId)) {
-              map.removeLayer(layerId);
-            }
-          });
-        } else if (routeLayer && map.getLayer(routeLayer)) {
-          map.removeLayer(routeLayer);
-        }
-        
-        // Then remove the source if it exists
-        if (map.getSource('route')) {
-          map.removeSource('route');
-        }
-      } catch (error) {
-        console.error("Error clearing route:", error);
-      }
-      
-      setRouteLayer(null);
+    try {
+      const result = await directionsService.route({
+        origin: { lat: start[1], lng: start[0] } as google.maps.LatLngLiteral,
+        destination: { lat: end[1], lng: end[0] } as google.maps.LatLngLiteral,
+        travelMode: google.maps.TravelMode.DRIVING
+      });
+
+      directionsRenderer.setDirections(result);
+      setRoute({
+        distance: result.routes[0].legs[0].distance?.text || '',
+        duration: result.routes[0].legs[0].duration?.text || ''
+      });
+    } catch (error) {
+      console.error('Error getting route:', error);
       setRoute(null);
     }
   };
 
-  // Clear route when selected location changes
-  useEffect(() => {
-    clearRoute();
-    if (selectedLocation) {
-      setShowDirections(true);
-    } else {
-      setShowDirections(false);
+  // Clear route
+  const clearRoute = () => {
+    if (directionsRenderer) {
+      const emptyResult: google.maps.DirectionsResult = {
+        routes: [],
+        request: {
+          origin: { lat: 0, lng: 0 },
+          destination: { lat: 0, lng: 0 },
+          travelMode: google.maps.TravelMode.DRIVING
+        }
+      };
+      directionsRenderer.setDirections(emptyResult);
     }
-  }, [selectedLocation]);
+    setRoute(null);
+  };
 
-  // Update start location when directionsFrom changes
-  useEffect(() => {
-    if (directionsFrom === 'current') {
-      setStartLocation(currentLocation);
-      setStartLocationName('Your Location');
-      if (selectedLocation && currentLocation) {
-        getRoute(currentLocation, getSelectedLocationCoords()).catch(err => {
-          console.error("Failed to get route in useEffect:", err);
-          // Error is handled inside getRoute function
-        });
+  // Search locations using Google Places Autocomplete
+  const searchLocations = async (term: string): Promise<void> => {
+    if (!autocompleteService || !map) return;
+
+    try {
+      const request: google.maps.places.AutocompletionRequest = {
+        input: term,
+        componentRestrictions: { country: 'in' },
+        types: ['geocode', 'establishment']
+      };
+
+      const response = await autocompleteService.getPlacePredictions(request);
+      if (response.predictions) {
+        setSearchResults(response.predictions);
       }
-    } else {
-      setStartLocation(null);
-      setStartLocationName('');
+    } catch (error) {
+      console.error('Error searching locations:', error);
+      setSearchResults([]);
     }
-  }, [directionsFrom, currentLocation, selectedLocation]);
+  };
+
+  // Select a location from search results
+  const selectSearchResult = async (result: google.maps.places.AutocompletePrediction) => {
+    if (!placesService) return;
+
+    try {
+      const place = await new Promise<google.maps.places.PlaceResult>((resolve, reject) => {
+        placesService.getDetails({
+          placeId: result.place_id,
+          fields: ['geometry', 'name']
+        }, (place, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            resolve(place);
+          } else {
+            reject(new Error('Place details not found'));
+          }
+        });
+      });
+
+      if (place.geometry?.location) {
+        const coordinates: [number, number] = [
+          place.geometry.location.lng(),
+          place.geometry.location.lat()
+        ];
+        
+        setStartLocation(coordinates);
+        setStartLocationName(result.description);
+        setStartSearchQuery(result.description);
+        setShowSearchDropdown(false);
+        
+        if (selectedLocation) {
+          getRoute(coordinates, getSelectedLocationCoords());
+        }
+      }
+    } catch (error) {
+      console.error('Error getting place details:', error);
+    }
+  };
 
   // Get coordinates of selected location
   const getSelectedLocationCoords = (): [number, number] => {
     const selected = cscLocations.find(loc => loc.id === selectedLocation);
     return selected ? selected.coordinates : [0, 0];
-  };
-
-  // Search for locations using OLA Maps search API
-  const searchLocations = async (query: string) => {
-    if (!query || query.length < 3) {
-      setSearchResults([]);
-      setShowSearchDropdown(false);
-      return;
-    }
-
-    setIsSearching(true);
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch(
-        `https://api.olamaps.io/search/geocode/forward?apiKey=RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb&text=${encodeURIComponent(query)}&limit=5`,
-        { signal: controller.signal }
-      );
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Search request failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.results) {
-        setSearchResults(data.results);
-        setShowSearchDropdown(true);
-      }
-    } catch (error) {
-      console.error('Error searching locations:', error);
-      setSearchResults([]);
-      // Could show a user-friendly error message here
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Handle search input changes with debounce
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setStartSearchQuery(value);
-    
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      searchLocations(value);
-    }, 500);
-    
-    setSearchTimeout(timeout);
-  };
-
-  // Select a location from search results
-  const selectSearchResult = (result: any) => {
-    const coordinates: [number, number] = [
-      result.geometry.coordinates[0],
-      result.geometry.coordinates[1]
-    ];
-    
-    setStartLocation(coordinates);
-    setStartLocationName(result.properties.name);
-    setStartSearchQuery(result.properties.name);
-    setShowSearchDropdown(false);
-    
-    if (selectedLocation) {
-      getRoute(coordinates, getSelectedLocationCoords());
-    }
-  };
-
-  // Get directions using OLA Maps directions API - following the correct API structure
-  const getRoute = async (start: [number, number], end: [number, number]) => {
-    if (!start || !end) return;
-    
-    setIsRouteFetching(true);
-    clearRoute();
-    
-    try {
-      // Format coordinates for API request - API expects lat,lng format for query params
-      const origin = `${start[1]},${start[0]}`; // lat,lng
-      const destination = `${end[1]},${end[0]}`; // lat,lng
-      
-      const apiKey = "RHn3shvzySH8e8LEmOKPN4mXxcMUXYk4TPTct8Gb";
-      const url = `https://api.olamaps.io/routing/v1/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&alternatives=false&steps=true&overview=full&language=en&traffic_metadata=false&api_key=${apiKey}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Directions request failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Directions API Response:", data);
-      
-      if (data.status === 'SUCCESS' && data.routes && data.routes.length > 0) {
-        const routeData = data.routes[0];
-        
-        // Get distance and duration from route legs
-        let totalDistance = 0;
-        let totalDuration = 0;
-        
-        if (routeData.legs && routeData.legs.length > 0) {
-          routeData.legs.forEach((leg: any) => {
-            if (typeof leg.distance === 'number') {
-              totalDistance += leg.distance;
-            }
-            if (typeof leg.duration === 'number') {
-              totalDuration += leg.duration;
-            }
-          });
-        }
-        
-        // Extract route geometry from overview_polyline
-        const routeCoordinates = decodePolyline(routeData.overview_polyline);
-        
-        if (routeCoordinates.length > 1) {
-          const routeGeometry = {
-            type: "LineString",
-            coordinates: routeCoordinates
-          };
-          
-          setRoute({
-            distance: totalDistance / 1000, // Convert to km
-            duration: totalDuration / 60,   // Convert to minutes
-            geometry: routeGeometry
-          });
-          
-          // Draw the route on the map
-          drawRoute(routeGeometry);
-          
-          // Calculate bounds from coordinates
-          const bounds = routeCoordinates.reduce(
-            (acc, curr) => {
-              return {
-                minLng: Math.min(acc.minLng, curr[0]),
-                maxLng: Math.max(acc.maxLng, curr[0]),
-                minLat: Math.min(acc.minLat, curr[1]),
-                maxLat: Math.max(acc.maxLat, curr[1])
-              };
-            },
-            { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 }
-          );
-          
-          // Fit map to show the entire route
-          map.fitBounds([
-            [bounds.minLng, bounds.minLat],
-            [bounds.maxLng, bounds.maxLat]
-          ], { padding: 50 });
-        } else {
-          throw new Error("Failed to decode polyline data");
-        }
-      } else {
-        throw new Error(`API Error: ${data.status || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error fetching route:', error);
-      drawFallbackRoute(start, end);
-    } finally {
-      setIsRouteFetching(false);
-    }
-  };
-  
-  // Function to decode polyline with improved error handling
-  const decodePolyline = (str: string): [number, number][] => {
-    if (!str || typeof str !== 'string') {
-      console.error("Invalid polyline string provided");
-      return [];
-    }
-
-    try {
-      let index = 0;
-      let lat = 0;
-      let lng = 0;
-      const coordinates: [number, number][] = [];
-      let shift = 0;
-      let result = 0;
-      let byte = null;
-      let latitude_change;
-      let longitude_change;
-
-      while (index < str.length) {
-        // Reset shift and result for latitude
-        shift = 0;
-        result = 0;
-
-        // Extract latitude
-        do {
-          byte = str.charCodeAt(index++) - 63;
-          result |= (byte & 0x1f) << shift;
-          shift += 5;
-        } while (byte >= 0x20);
-
-        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        
-        // Reset shift and result for longitude
-        shift = 0;
-        result = 0;
-
-        // Extract longitude
-        do {
-          byte = str.charCodeAt(index++) - 63;
-          result |= (byte & 0x1f) << shift;
-          shift += 5;
-        } while (byte >= 0x20);
-        
-        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        
-        lat += latitude_change;
-        lng += longitude_change;
-
-        // Convert to degrees and store as [lng, lat] for consistency with GeoJSON
-        coordinates.push([lng * 1e-5, lat * 1e-5]);
-      }
-
-      return coordinates;
-    } catch (error) {
-      console.error("Error decoding polyline:", error);
-      return [];
-    }
-  };
-
-  // Draw route on the map with enhanced error handling
-  const drawRoute = (geometry: any) => {
-    if (!map) return;
-    
-    try {
-      // Ensure geometry is valid
-      if (!geometry || !geometry.coordinates || geometry.coordinates.length < 2) {
-        console.error("Invalid geometry for route drawing");
-        return;
-      }
-      
-      // Check if the map has the source; if not, add it
-      if (!map.getSource('route')) {
-        map.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: geometry
-          }
-        });
-        
-        // Add the route line layer with improved styling
-        map.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#00A86B', // Green color for better visibility
-            'line-width': 6,
-            'line-opacity': 0.8
-          }
-        });
-
-        // Add a glow effect with a second line
-        map.addLayer({
-          id: 'route-glow',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#64DD17',
-            'line-width': 10,
-            'line-opacity': 0.3,
-            'line-blur': 3
-          }
-        }, 'route-line');
-        
-        // Save references to remove later
-        setRouteLayer(['route-line', 'route-glow']);
-      } else {
-        // Update existing source with new route data
-        map.getSource('route').setData({
-          type: 'Feature',
-          properties: {},
-          geometry: geometry
-        });
-      }
-    } catch (error) {
-      console.error("Error drawing route:", error);
-    }
-  };
-
-  // Draw a fallback route when API attempts fail
-  const drawFallbackRoute = (start: [number, number], end: [number, number]) => {
-    // Create a simple direct line between points
-    const simpleGeometry = {
-      type: "LineString",
-      coordinates: [start, end]
-    };
-    
-    // Calculate simple distance (very rough)
-    const lngDiff = Math.abs(end[0] - start[0]);
-    const latDiff = Math.abs(end[1] - start[1]);
-    const distance = Math.sqrt(lngDiff * lngDiff + latDiff * latDiff) * 111; // ~111km per degree
-    
-    // Calculate simple duration (assuming 40km/h average speed)
-    const duration = (distance / 40) * 60; // minutes
-    
-    setRoute({
-      distance: distance,
-      duration: duration,
-      geometry: simpleGeometry
-    });
-    
-    // Draw the route on the map
-    drawRoute(simpleGeometry);
-    
-    // Fit map to show the entire route (with padding)
-    map.fitBounds([
-      [Math.min(start[0], end[0]), Math.min(start[1], end[1])],
-      [Math.max(start[0], end[0]), Math.max(start[1], end[1])]
-    ], { padding: 50 });
-  };
-
-  // Format distance and duration for display
-  const formatDistance = (km: number) => {
-    return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-  };
-  
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${Math.round(minutes)} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const mins = Math.round(minutes % 60);
-      return `${hours} h ${mins} min`;
-    }
   };
 
   // Show directions panel
@@ -1334,163 +1195,167 @@ const Page = () => {
   };
 
   // Add custom styled markers for CSC locations
-  const addMarkers = (olaMapInstance: any, mapInstance: any) => {
-    if (!olaMapInstance || !mapInstance) return;
+  const addMarkers = async (mapInstance: google.maps.Map) => {
+    if (!mapInstance) return;
     
     // Clear existing markers
-    markers.forEach(marker => marker.remove());
-    const newMarkers: any[] = [];
+    markers.forEach(marker => marker.map = null);
+    const newMarkers: google.maps.AdvancedMarkerElement[] = [];
+    
+    // Import AdvancedMarkerElement
+    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as MarkerLibrary;
     
     // Add markers for each location
     filteredLocations.forEach((location) => {
-      // Create popup for this location with improved styling
-      const popup = olaMapInstance
-        .addPopup({ offset: [0, -15] })
-        .setHTML(`
-          <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
-            ${location.imageUrl ? `
-              <div style="margin: 10px 0; width: 100%; height: 120px; overflow: hidden; border-radius: 6px;">
-                <img src="${location.imageUrl}" alt="${location.name}" 
-                     style="width: 100%; height: 100%; object-fit: cover;" />
-              </div>
-            ` : ''}
-            <p style="margin: 8px 0; font-weight: 500;"><strong>Address:</strong> ${location.address}</p>
-            <p style="margin: 8px 0; color: #555;">${location.description}</p>
-            <div style="margin: 10px 0;">
-              <strong>Services:</strong>
-              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
-                ${location.services.map(service => 
-                  `<span style="background: #e8f5e9; color: #2e7d32; padding: 3px 8px; 
-                   border-radius: 4px; font-size: 12px;">${service}</span>`
-                ).join('')}
-              </div>
-            </div>
-            <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
-            <button onclick="document.dispatchEvent(new CustomEvent('getDirections', {detail: ${location.id}}))" 
-                    style="background: #00A86B; color: white; border: none; padding: 8px 16px; 
-                    border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
-              Get Directions
-            </button>
-          </div>
-        `);
-      
-      // Create custom marker element for CSC location
-      const el = document.createElement('div');
-      
-      // Apply styles directly to marker element
-      el.style.width = '32px';
-      el.style.height = '42px';
-      el.style.backgroundImage = selectedLocation === location.id ? 
-        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%23FF3E4D\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")' : 
-        'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 32\'%3e%3cpath fill=\'%2300A86B\' stroke=\'white\' stroke-width=\'1\' d=\'M12 0c-6.627 0-12 5.373-12 12 0 8.432 12 20 12 20s12-11.568 12-20c0-6.627-5.373-12-12-12zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z\'/%3e%3c/svg%3e")';
-      el.style.backgroundSize = 'contain';
-      el.style.backgroundRepeat = 'no-repeat';
-      el.style.cursor = 'pointer';
-      
-      // Add animation for selected markers
-      if (selectedLocation === location.id) {
-        el.style.animation = 'bounce 0.5s ease infinite alternate';
-      }
-      
-      // Add marker with custom element
-      const marker = olaMapInstance
-        .addMarker({ 
-          element: el,
-          offset: [0, 0], 
-          anchor: 'bottom' 
-        })
-        .setLngLat(location.coordinates)
-        .setPopup(popup)
-        .addTo(mapInstance);
-      
-      // Add click event to marker
-      marker.getElement().addEventListener('click', () => {
-        setSelectedLocation(location.id);
-        mapInstance.flyTo({
-          center: location.coordinates,
-          zoom: 14
-        });
+      // Create marker
+      const marker = new AdvancedMarkerElement({
+        map: mapInstance,
+        position: { lat: location.coordinates[1], lng: location.coordinates[0] },
+        title: location.name
       });
-      
+
+      // Create info window content
+      const content = document.createElement('div');
+      content.innerHTML = `
+        <div style="padding: 15px; max-width: 280px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h3 style="margin-top: 0; color: #1a3a5f; font-weight: 600;">${location.name}</h3>
+          ${location.imageUrl ? `
+            <div style="margin: 10px 0; width: 100%; height: 120px; overflow: hidden; border-radius: 6px;">
+              <img src="${location.imageUrl}" alt="${location.name}" 
+                   style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>
+          ` : ''}
+          <p style="margin: 8px 0; font-weight: 500;"><strong>Address:</strong> ${location.address}</p>
+          <p style="margin: 8px 0; color: #555;">${location.description}</p>
+          <div style="margin: 10px 0;">
+            <strong>Services:</strong>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+              ${location.services.map(service => 
+                `<span style="background: #e3f2fd; color: #1976D2; padding: 3px 8px; 
+                 border-radius: 4px; font-size: 12px;">${service}</span>`
+              ).join('')}
+            </div>
+          </div>
+          <p style="margin: 8px 0; color: #666;"><strong>District:</strong> ${location.district}, ${location.state}</p>
+          <button id="getDirectionsBtn" 
+                  style="background: #1976D2; color: white; border: none; padding: 8px 16px; 
+                  border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">
+            Get Directions
+          </button>
+        </div>
+      `;
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: content
+      });
+
+      // Add click event to marker
+      marker.addListener('click', () => {
+        setSelectedLocation(location.id);
+        mapInstance.panTo({ lat: location.coordinates[1], lng: location.coordinates[0] });
+        mapInstance.setZoom(14);
+        infoWindow.open(mapInstance, marker);
+
+        // Add click event to the Get Directions button after the info window is opened
+        setTimeout(() => {
+          const getDirectionsBtn = content.querySelector('#getDirectionsBtn');
+          if (getDirectionsBtn) {
+            getDirectionsBtn.addEventListener('click', () => {
+              handleShowDirections(location.id);
+            });
+          }
+        }, 100);
+      });
+
       newMarkers.push(marker);
     });
-    
+
     setMarkers(newMarkers);
-    
-    // Add event listener for "Get Directions" button in popups
-    document.addEventListener('getDirections', (e: any) => {
-      const locationId = e.detail;
-      handleShowDirections(locationId);
-    });
   };
 
-  // Add user location marker with improved styling - using green colors
-  const addUserMarker = (olaMapInstance: any, mapInstance: any) => {
-    if (!olaMapInstance || !mapInstance || !currentLocation) return;
+  // Add user location marker
+  const addUserMarker = async (mapInstance: google.maps.Map) => {
+    if (!mapInstance || !currentLocation) return;
     
     if (userMarker) {
-      userMarker.remove();
+      userMarker.map = null;
     }
     
-    // Create popup for user location with improved styling
-    const popup = olaMapInstance
-      .addPopup({ offset: [0, -15] })
-      .setHTML(`
+    // Create a blue dot marker for user location
+    const userLocationMarker = new google.maps.Marker({
+      map: mapInstance,
+      position: { lat: currentLocation[1], lng: currentLocation[0] },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#4285F4",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+      },
+      title: "Your Location",
+      zIndex: 1000 // Ensure it's always on top
+    });
+
+    // Add accuracy circle
+    const accuracyCircle = new google.maps.Circle({
+      map: mapInstance,
+      center: { lat: currentLocation[1], lng: currentLocation[0] },
+      radius: 50, // Default radius, will be updated with actual accuracy
+      fillColor: "#4285F4",
+      fillOpacity: 0.15,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.5,
+      strokeWeight: 1,
+      zIndex: 999
+    });
+
+    // Create info window content
+    const content = document.createElement('div');
+    content.innerHTML = `
         <div style="padding: 12px; max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <h3 style="margin-top: 0; color: #00A86B; font-weight: 600;">Your Location</h3>
+          <h3 style="margin-top: 0; color: #1976D2; font-weight: 600;">Your Location</h3>
           <p style="margin: 5px 0; color: #333;">This is your current position</p>
         </div>
-      `);
-    
-    // Custom marker element with green styling
-    const el = document.createElement('div');
-    el.className = styles.userMarker;
-    
-    // Create inner elements for the user marker with explicit styles
-    const dotElement = document.createElement('div');
-    dotElement.className = styles.userMarkerDot;
-    dotElement.style.backgroundColor = '#00A86B'; // Green dot
-    dotElement.style.border = '2px solid white';
-    
-    const pulseElement = document.createElement('div');
-    pulseElement.className = styles.userMarkerPulse;
-    pulseElement.style.backgroundColor = 'rgba(0, 168, 107, 0.3)'; // Green pulse with transparency
-    
-    // Append children to marker element
-    el.appendChild(dotElement);
-    el.appendChild(pulseElement);
-    
-    // Add marker
-    const marker = olaMapInstance
-      .addMarker({ 
-        element: el,
-        offset: [0, 0], 
-        anchor: 'center' 
-      })
-      .setLngLat(currentLocation)
-      .setPopup(popup)
-      .addTo(mapInstance);
-    
-    setUserMarker(marker);
+    `;
+
+    const infoWindow = new google.maps.InfoWindow({
+      content: content
+    });
+
+    userLocationMarker.addListener('click', () => {
+      infoWindow.open(mapInstance, userLocationMarker);
+    });
+
+    setUserMarker(userLocationMarker);
+
+    // Update accuracy circle when location changes
+    return () => {
+      if (accuracyCircle) {
+        accuracyCircle.setMap(null);
+      }
+    };
   };
-  
+
   // Update markers when selected location changes or filters change
   useEffect(() => {
-    if (olaMaps && map) {
-      addMarkers(olaMaps, map);
+    if (map) {
+      addMarkers(map);
+      addUserMarker(map); // Always add user marker when markers are updated
     }
-  }, [selectedLocation, filters, olaMaps, map]);
+  }, [selectedLocation, filters, map, currentLocation]); // Added currentLocation dependency
   
   // Handle clicking on a location in the list
   const handleLocationClick = (location: CSC) => {
     setSelectedLocation(location.id);
     
     if (map) {
-      map.flyTo({
-        center: location.coordinates,
-        zoom: 14
-      });
+      const position: google.maps.LatLngLiteral = { 
+        lat: location.coordinates[1], 
+        lng: location.coordinates[0] 
+      };
+      map.panTo(position);
+      map.setZoom(14);
     }
     
     // If start location is already set, get route
@@ -1502,10 +1367,12 @@ const Page = () => {
   // Center map on user location
   const goToMyLocation = () => {
     if (map && currentLocation) {
-      map.flyTo({
-        center: currentLocation,
-        zoom: 15
-      });
+      const position: google.maps.LatLngLiteral = { 
+        lat: currentLocation[1], 
+        lng: currentLocation[0] 
+      };
+      map.panTo(position);
+      map.setZoom(15);
     }
   };
 
@@ -1520,29 +1387,206 @@ const Page = () => {
     setSelectedLocation(null);
     
     if (map) {
-      map.flyTo({
-        center: currentLocation || [78.9629, 20.5937],
-        zoom: 5
+      // Reset map options
+      map.setOptions({
+        minZoom: 4,
+        maxZoom: 18,
+        restriction: null
       });
+
+      const bounds = new google.maps.LatLngBounds();
+      cscLocations.forEach(location => {
+        bounds.extend({ 
+          lat: location.coordinates[1], 
+          lng: location.coordinates[0] 
+        });
+      });
+
+      // Add padding to the bounds
+      const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+      
+      // First pan to center
+      const center = bounds.getCenter();
+      map.panTo(center);
+      
+      // Then smoothly zoom out
+      setTimeout(() => {
+        map.fitBounds(bounds, padding);
+      }, 300);
     }
   };
 
+  // Update the map bounds to show all locations
+  const updateMapBounds = (locations: CSC[]) => {
+    if (!map || locations.length === 0) return;
+    
+    const bounds = new google.maps.LatLngBounds();
+    locations.forEach(location => {
+      bounds.extend({ lat: location.coordinates[1], lng: location.coordinates[0] });
+    });
+    
+    // Add padding to the bounds
+    const padding = { top: 100, right: 100, bottom: 100, left: 100 };
+    
+    // First pan to center
+    const center = bounds.getCenter();
+    map.panTo(center);
+    
+    // Then smoothly zoom
+    setTimeout(() => {
+      map.fitBounds(bounds, padding);
+    }, 300);
+  };
+
+  // Clear route when selected location changes
+  useEffect(() => {
+    if (directionsRenderer) {
+      const emptyResult: google.maps.DirectionsResult = {
+        routes: [],
+        request: {
+          origin: { lat: 0, lng: 0 },
+          destination: { lat: 0, lng: 0 },
+          travelMode: google.maps.TravelMode.DRIVING
+        }
+      };
+      directionsRenderer.setDirections(emptyResult);
+    }
+    setRoute(null);
+    
+    if (selectedLocation) {
+      setShowDirections(true);
+    } else {
+      setShowDirections(false);
+    }
+  }, [selectedLocation]);
+
+  // Initialize map with all locations
+  useEffect(() => {
+    if (map) {
+      const bounds = new google.maps.LatLngBounds();
+      cscLocations.forEach(location => {
+        bounds.extend({ 
+          lat: location.coordinates[1], 
+          lng: location.coordinates[0] 
+        });
+      });
+      map.fitBounds(bounds);
+    }
+  }, [map, cscLocations]);
+
   return (
-    <div className={styles.container}>
-      <div className={styles.mapContainer} id="map" ref={mapRef}></div>
+    <div className={styles.container} style={{height: '100vh'}}>
+      <div className={styles.mapContainer} id="map" ref={mapRef}>
+        {showDirections && route && route.distance && route.duration && (
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            padding: '1rem',
+            zIndex: 1000,
+            maxWidth: '300px',
+            width: '100%'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              <h3 style={{
+                margin: 0,
+                fontSize: '1rem',
+                color: '#1a3a5f',
+                fontWeight: '600'
+              }}>Route Information</h3>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              <span style={{ color: '#666', fontSize: '0.9rem' }}>{route.distance}</span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span style={{ color: '#666', fontSize: '0.9rem' }}>{route.duration}</span>
+            </div>
+          </div>
+        )}
+      </div>
       
-      <div className={styles.sidebar}>
-        <div className={styles.filterSection}>
-          <h2>Find Common Service Centers</h2>
+      <div className={styles.sidebar} style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%'
+      }}>
+        <div className={styles.filterSection} style={{
+          // flex: '0 0 50%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          marginBottom: '1rem'
+        }}>
+          <h2 style={{
+            fontSize: '1.5rem',
+            color: '#1a3a5f',
+            marginBottom: '1rem',
+            fontWeight: '600',
+            textAlign: 'center',
+            padding: '0.5rem',
+            borderBottom: '2px solid #e3f2fd'
+          }}>Find Common Service Centers</h2>
           
-          <div className={styles.filters}>
+          <div className={styles.filters} style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1rem',
+            padding: '0.5rem'
+          }}>
             <div className={styles.filterItem}>
-              <label htmlFor="state">State</label>
+              <label htmlFor="state" style={{
+                display: 'block',
+                marginBottom: '0.25rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}>State</label>
               <select 
                 id="state"
                 value={filters.state}
                 onChange={(e) => handleFilterChange('state', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All States</option>
                 {states.map(state => (
@@ -1552,12 +1596,30 @@ const Page = () => {
             </div>
             
             <div className={styles.filterItem}>
-              <label htmlFor="district">District</label>
+              <label htmlFor="district" style={{
+                display: 'block',
+                marginBottom: '0.25rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}>District</label>
               <select 
                 id="district"
                 value={filters.district}
                 onChange={(e) => handleFilterChange('district', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Districts</option>
                 {districts.map(district => (
@@ -1567,12 +1629,30 @@ const Page = () => {
             </div>
             
             <div className={styles.filterItem}>
-              <label htmlFor="subdistrict">Subdistrict</label>
+              <label htmlFor="subdistrict" style={{
+                display: 'block',
+                marginBottom: '0.25rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}>Subdistrict</label>
               <select 
                 id="subdistrict"
                 value={filters.subdistrict}
                 onChange={(e) => handleFilterChange('subdistrict', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Subdistricts</option>
                 {subdistricts.map(subdistrict => (
@@ -1582,12 +1662,30 @@ const Page = () => {
             </div>
 
             <div className={styles.filterItem}>
-              <label htmlFor="village">Village</label>
+              <label htmlFor="village" style={{
+                display: 'block',
+                marginBottom: '0.25rem',
+                color: '#1a3a5f',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}>Village</label>
               <select 
                 id="village"
                 value={filters.village}
                 onChange={(e) => handleFilterChange('village', e.target.value)}
                 className={styles.selectInput}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e0e0e0',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
               >
                 <option value="">All Villages</option>
                 {villages.map(village => (
@@ -1595,170 +1693,164 @@ const Page = () => {
                 ))}
               </select>
             </div>
+          </div>
             
-            <div className={styles.filterActions}>
-              <button onClick={resetFilters} className={styles.resetBtn}>
-                Reset Filters
-              </button>
-              <button onClick={goToMyLocation} className={styles.myLocationBtn}>
-                My Location
-              </button>
-            </div>
+          <div className={styles.filterActions} style={{
+            display: 'flex',
+            gap: '1rem',
+            marginTop: '1rem',
+            padding: '0 0.5rem'
+          }}>
+            <button onClick={resetFilters} style={{
+              flex: 1,
+              padding: '0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#f5f5f5',
+              color: '#333',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              Reset
+            </button>
+            <button onClick={goToMyLocation} style={{
+              flex: 1,
+              padding: '0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#1976D2',
+              color: 'white',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+              My Location
+            </button>
           </div>
         </div>
         
-        {showDirections ? (
-          <div className={styles.directionsPanel}>
-            <div className={styles.directionsPanelHeader}>
-              <h3>Directions</h3>
-              <button 
-                onClick={handleCloseDirections} 
-                className={styles.closeBtn}
-                aria-label="Close directions"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className={styles.directionsContent}>
-              {selectedLocation && (
-                <div className={styles.destination}>
-                  <h4>Destination:</h4>
-                  <p>{cscLocations.find(loc => loc.id === selectedLocation)?.name}</p>
-                  <p className={styles.locationAddress}>
-                    {cscLocations.find(loc => loc.id === selectedLocation)?.address}
-                  </p>
-                </div>
-              )}
-              
-              <div className={styles.directionsOptions}>
-                <div className={styles.optionsTabs}>
-                  <button 
-                    className={`${styles.optionTab} ${directionsFrom === 'current' ? styles.activeTab : ''}`}
-                    onClick={() => setDirectionsFrom('current')}
-                  >
-                    Current Location
-                  </button>
-                  <button 
-                    className={`${styles.optionTab} ${directionsFrom === 'search' ? styles.activeTab : ''}`}
-                    onClick={() => setDirectionsFrom('search')}
-                  >
-                    Search Location
-                  </button>
-                </div>
-                
-                {directionsFrom === 'current' ? (
-                  <div className={styles.currentLocationOption}>
-                    <p>From: {currentLocation ? 'Your Current Location' : 'Locating you...'}</p>
-                    <button 
-                      onClick={getDirectionsFromCurrentLocation} 
-                      className={styles.getDirectionsBtn}
-                      disabled={!currentLocation || !selectedLocation}
-                    >
-                      Get Directions
-                    </button>
-                  </div>
-                ) : (
-                  <div className={styles.searchLocationOption}>
-                    <div className={styles.searchBox}>
-                      <input
-                        type="text"
-                        placeholder="Enter a starting location"
-                        value={startSearchQuery}
-                        onChange={handleSearchChange}
-                        onFocus={() => {
-                          if (searchResults.length > 0) setShowSearchDropdown(true);
-                        }}
-                        className={styles.searchInput}
-                      />
-                      {isSearching && <span className={styles.searchingIndicator}>Searching...</span>}
-                      
-                      {showSearchDropdown && searchResults.length > 0 && (
-                        <div className={styles.searchResultsDropdown}>
-                          {searchResults.map((result, index) => (
-                            <div 
-                              key={index} 
-                              className={styles.searchResultItem}
-                              onClick={() => selectSearchResult(result)}
-                            >
-                              <span>{result.properties.name}</span>
-                              <small>{result.properties.city || ''} {result.properties.country || ''}</small>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button 
-                      onClick={() => {
-                        if (startLocation && selectedLocation) {
-                          getRoute(startLocation, getSelectedLocationCoords());
-                        }
-                      }} 
-                      className={styles.getDirectionsBtn}
-                      disabled={!startLocation || !selectedLocation}
-                    >
-                      Get Directions
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {isRouteFetching && (
-                <div className={styles.loadingRoute}>
-                  <div className={styles.spinner}></div>
-                  <p>Finding the best route...</p>
-                </div>
-              )}
-              
-              {route && (
-                <div className={styles.routeInfo}>
-                  <div className={styles.routeSummary}>
-                    <div className={styles.routeMetric}>
-                      <span className={styles.routeMetricValue}>
-                        {formatDistance(route.distance)}
-                      </span>
-                      <span className={styles.routeMetricLabel}>Distance</span>
-                    </div>
-                    <div className={styles.routeMetric}>
-                      <span className={styles.routeMetricValue}>
-                        {formatDuration(route.duration)}
-                      </span>
-                      <span className={styles.routeMetricLabel}>Duration</span>
-                    </div>
-                  </div>
-                  <div className={styles.routeTips}>
-                    <p>Follow the green route to reach your destination.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.locationsList}>
-            <h3>CSC Locations {filteredLocations.length > 0 ? `(${filteredLocations.length})` : ''}</h3>
+        <div className={styles.locationsList} style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          padding: '1.5rem',
+          flex: '1',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <h3 style={{
+            margin: '0 0 1rem 0',
+            color: '#1a3a5f',
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            paddingBottom: '0.5rem',
+            borderBottom: '2px solid #e3f2fd'
+          }}>CSC Locations {filteredLocations.length > 0 ? `(${filteredLocations.length})` : ''}</h3>
             
             {filteredLocations.length === 0 ? (
-              <div className={styles.noResults}>No CSCs found with current filters</div>
-            ) : (
-              <ul>
+            <div style={{
+              padding: '2rem',
+              textAlign: 'center',
+              color: '#666',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              flex: 1
+            }}>No CSCs found with current filters</div>
+          ) : (
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
                 {filteredLocations.map((location) => (
                   <li 
                     key={location.id}
                     className={`${styles.locationItem} ${selectedLocation === location.id ? styles.selected : ''}`}
                     onClick={() => handleLocationClick(location)}
-                  >
-                    <div className={styles.locationContent}>
-                      <h4>{location.name}</h4>
-                      <p className={styles.locationAddress}>{location.address}</p>
-                      <p className={styles.locationRegion}>{location.subdistrict}, {location.district}</p>
-                      <div className={styles.services}>
+                  style={{
+                    backgroundColor: selectedLocation === location.id ? '#e3f2fd' : 'white',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '1px solid #e0e0e0'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{
+                        margin: '0 0 0.5rem 0',
+                        color: '#1a3a5f',
+                        fontSize: '1.1rem',
+                        fontWeight: '600'
+                      }}>{location.name}</h4>
+                      <p style={{
+                        margin: '0 0 0.25rem 0',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>{location.address}</p>
+                      <p style={{
+                        margin: '0 0 0.5rem 0',
+                        color: '#666',
+                        fontSize: '0.9rem'
+                      }}>{location.subdistrict}, {location.district}</p>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem'
+                      }}>
                         {location.services.slice(0, 3).map((service, idx) => (
-                          <span key={idx} className={styles.serviceTag}>{service}</span>
+                          <span key={idx} style={{
+                            backgroundColor: '#e3f2fd',
+                            color: '#1976D2',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500'
+                          }}>{service}</span>
                         ))}
                         {location.services.length > 3 && (
-                          <span className={styles.serviceTag}>+{location.services.length - 3} more</span>
-                        )})
+                          <span style={{
+                            backgroundColor: '#e3f2fd',
+                            color: '#1976D2',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            fontWeight: '500'
+                          }}>+{location.services.length - 3} more</span>
+                        )}
                       </div>
                     </div>
                     <button 
@@ -1766,17 +1858,33 @@ const Page = () => {
                         e.stopPropagation();
                         handleShowDirections(location.id);
                       }}
-                      className={styles.directionsBtn}
+                      style={{
+                        backgroundColor: '#1976D2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontSize: '0.9rem',
+                        fontWeight: '500'
+                      }}
                       aria-label="Get directions"
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
                       Directions
                     </button>
+                  </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        )}
       </div>
     </div>
   );

@@ -6,8 +6,13 @@ dotenv.config();
  
 const router = express.Router();
  
+<<<<<<< HEAD
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
+=======
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDCxvnHPjo9hn0JyDDTqo2Xgcull_aRFCs";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+>>>>>>> 777af16cadead7f93ee75feeb19a049606bff391
  
 // System prompt to guide the model
 const SYSTEM_PROMPT = `

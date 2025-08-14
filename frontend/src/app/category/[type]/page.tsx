@@ -1,8 +1,20 @@
 import { ArrowLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Metadata } from "next"
 
-export default function CategoryPage({ params }: { params: { type: string } }) {
+type Props = {
+  params: { type: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export function generateMetadata({ params }: Props): Metadata {
+  return {
+    title: `${params.type.replace(/-/g, " ")} - Category`,
+  }
+}
+
+export default function Page({ params, searchParams }: Props) {
   const documents = [
     {
       title: "Driving License",

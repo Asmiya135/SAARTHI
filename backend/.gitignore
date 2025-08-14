@@ -11,8 +11,13 @@ logs/*.log
 debug.log
 error.log
 
-# Environment Variables
+backend/.env
+backend/forisl/
 
+# Environment Variables
+.env
+#Virtual Environment
+forisl/
 # Database & Cache
 dump.rdb
 *.sqlite
@@ -37,3 +42,4 @@ Thumbs.db
 # Twilio Secrets (if stored)
 .twilio/
 .env/
+asha-ai-458507-b34a6d0e90c6.json
