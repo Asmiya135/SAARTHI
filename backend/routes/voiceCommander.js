@@ -6,7 +6,7 @@ dotenv.config();
  
 const router = express.Router();
  
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD8qPRiFtUMPhSyAuryQjmTQqI0U1WGbeA";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
  
 // System prompt to guide the model

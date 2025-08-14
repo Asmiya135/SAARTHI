@@ -12,7 +12,7 @@ const stats = [
     icon: "/departments_stats_bg.png",
   },
   {
-    number: "537.75 Cr",
+    number: "3000+",
     label: "Central and State Government Schemes",
     bgColor: "bg-gradient-to-br from-[#D0EFFF]/40 to-[#E3F2FD]/60",
     textColor: "text-[#1976D2]",

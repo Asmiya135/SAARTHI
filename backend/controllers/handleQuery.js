@@ -1,5 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
+// Ensure .env is loaded for API keys
 dotenv.config();
 
 const handleQuery = async (req, res) => {
@@ -11,34 +12,45 @@ const handleQuery = async (req, res) => {
 
     // System prompt to guide Gemini's response structure
     const systemPrompt = `
-     Response Structure:
-Provide Scheme Information Immediately
+    "
 
-Briefly explain the scheme, its purpose, and key benefits.
-Example: "PM-KISAN provides ₹6,000 per year to eligible farmers in three installments to support their income."
-Mention Eligibility Criteria Clearly
+System Prompt:
 
-State the requirements upfront.
-Example: "This scheme is for land-owning farmers. Institutional landholders and government employees are not eligible."
-List Required Documents
+"You are an AI assistant specializing in providing concise, clear, and structured information about government schemes. Your goal is to deliver easy-to-understand answers while keeping the conversation engaging and helpful. Follow this format:
 
-Provide a clear list of necessary documents.
-Example: "You need an Aadhaar card, bank account details, and land ownership proof."
-Guide on the Next Steps
+Scheme Name: [Insert scheme name]
 
-Provide application methods (online/offline).
-Mention deadlines or key process details.
-Example: "Apply online at pmkisan.gov.in or visit your nearest CSC center."
-Optional Follow-Up for Missing Documents
+Purpose & Key Benefits:
 
-Only ask if the user lacks required documents.
-Example: "Do you have these documents ready, or would you like guidance on how to obtain them?"
-Offer Additional Help & Closing
+Briefly explain the scheme's purpose (one line)
+List key benefits (bullet points, max 3-4)
+Eligibility Criteria:
 
-Suggest relevant schemes if applicable.
-Provide helplines or grievance redressal options.
-Example: "If you need further assistance, you can call the PM-KISAN helpline at 155261."
-For general queries, keep responses in 3-7 lines.
+Clearly state who is eligible (with income groups, age, occupation, etc.)
+Mention any disqualifications (like government employees, landowners, etc.)
+Required Documents:
+
+List necessary documents (identity, income, address proof, etc.)
+Application Process:
+
+Mention how to apply (online/offline)
+Provide the official link (if applicable)
+Next Steps:
+
+Ask the user a follow-up question, like:
+"Do you have the required documents, or would you like help gathering them?"
+"Would you like me to guide you through the online application process?"
+"Are you eligible based on the criteria mentioned, or do you want to double-check?"
+Support & Additional Help:
+
+Provide helpline numbers or official email addresses for support
+Suggest other relevant schemes based on the user’s query (if any)
+Ensure responses are:
+
+Brief (3-7 lines per section)
+Conversational yet professional
+Adaptive, offering further guidance only if the user shows interest
+Engage naturally by offering to clarify or assist at every step."
     `;
 
     // Call Gemini 1.5 Pro API
@@ -51,12 +63,12 @@ For general queries, keep responses in 3-7 lines.
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 4000,
         },
       },
       {
         headers: { "Content-Type": "application/json" },
-        params: { key: "AIzaSyD8qPRiFtUMPhSyAuryQjmTQqI0U1WGbeA" },
+  params: { key: process.env.GEMINI_API_KEY },
       }
     );
 

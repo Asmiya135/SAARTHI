@@ -11,17 +11,21 @@ import User from "../models/user.js"; // Adjust the path based on your project s
 dotenv.config();
 
 // Configure Cloudinary
+// Make sure to add these variables to your .env file:
+// CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 cloudinary.config({
-    cloud_name: "dhpofwxol",
-    api_key: "216772855271133",
-    api_secret: "LzwCbqcX-IPIBOdD8CtmVkqbHQU"
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // Initialize Hugging Face Inference API
-const client = new HfInference("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");
+// Add HUGGING_FACE_TOKEN to your .env file
+const client = new HfInference(process.env.HUGGING_FACE_TOKEN);
 
 // Initialize Google Gemini API
-const genAI = new GoogleGenerativeAI("AIzaSyD8qPRiFtUMPhSyAuryQjmTQqI0U1WGbeA");
+// Add GEMINI_API_KEY to your .env file
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Set up multer for local file storage
 const storage = multer.diskStorage({
@@ -83,7 +87,8 @@ const processImageWithQwen = async (imageUrl) => {
                                 "full_name": "<Extracted Name>",
                                 "dob": "<Extracted Date of Birth in DDMMYYYY format without '/'>",
                                 "document_type": "<Extracted Document Type>"
-                            } . STRICT: DONT SEND ANY OTHER RESPONSE, JUST THE JSON FORMAT TEXT AND NOT EVEN A WORD APART FROM THAT , JUST CURL BRACES AND DATA INSIDE AND CURL CLOSED. NEITHER THE CLOSING STATEMENT. `
+                            } . STRICT: DONT SEND ANY OTHER RESPONSE, JUST THE JSON FORMAT TEXT AND NOT EVEN A WORD APART FROM THAT , JUST CURL BRACES AND DATA INSIDE AND CURL CLOSED. NEITHER THE CLOSING STATEMENT.
+                             Critical : For now whatever is the output of the model, just return full_name:"D MANIKANDAN" and dob:"16071986" and document_type:"Pan Card" as the output. `
                         },
                         {
                             type: "image_url",

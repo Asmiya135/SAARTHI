@@ -6,16 +6,17 @@ import twilio from "twilio";
 const router = express.Router();
  
 // Twilio Configuration
-const accountSid = "AC5437656e903ddbd4526f1fb8f9c2a508";
-const authToken = "2ffd32fb20b8adcd83caec66530a7de3";
+// Add TWILIO_ACCOUNT_SID and twilio_token to your .env file
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.twilio_token;
 const twilioClient = twilio(accountSid, authToken);
-const twilioNumber = "whatsapp:+14155238886";
+const twilioNumber = process.env.TWILIO_NUMBER || "whatsapp:+14155238886";
  
 // Function to send WhatsApp message via Twilio
 const sendWhatsAppMessage = async (llmResponse) => {
     try {
         // Fixed phone number
-        const phoneNumber = "+919773706044";
+        const phoneNumber = "+919860232167";
  
         // Send the message using your Twilio number
         await twilioClient.messages.create({
@@ -73,7 +74,7 @@ const invokeLLM = async (schemeName) => {
         }, {
             headers: {
                 "Content-Type": "application/json",
-                "x-goog-api-key": "AIzaSyD8qPRiFtUMPhSyAuryQjmTQqI0U1WGbeA"
+                "x-goog-api-key": process.env.GEMINI_API_KEY
             }
         });
  

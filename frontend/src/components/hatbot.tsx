@@ -10,7 +10,7 @@ const Hatbot = () => {
 
     const widgetDiv = document.createElement("div");
     widgetDiv.innerHTML = `
-      <elevenlabs-convai agent-id="ZDyB0nEzZ3lmcqFLqoUs"></elevenlabs-convai>
+      <elevenlabs-convai agent-id="ZtZ0twBvDhYV6fz1cAH6"></elevenlabs-convai>
       <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
     `;
     document.body.appendChild(widgetDiv);

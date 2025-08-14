@@ -24,11 +24,11 @@ const activities = [
   },
   {
     id: 3,
-    title: "Benefit Received",
-    description: "₹2000 credited to your account",
-    date: "1 month ago",
-    icon: CreditCard,
-    color: "purple",
+    title: "Document Uploaded",
+    description: "Pan Card uploaded successfully",
+    date: "1 week ago",
+    icon: FileText,
+    color: "blue",
   },
 ]
 

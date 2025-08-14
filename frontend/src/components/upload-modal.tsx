@@ -196,9 +196,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
                     
                     {!comparisonResult.isMatch && (
                       <p className="mt-2">
-                        🔹 <strong>How to Change It?</strong> Visit the <a href="https://uidai.gov.in/" target="_blank" className="text-blue-600 font-medium underline">UIDAI Website</a> or your nearest Aadhaar center.
+                        🔹 <strong>How to Change It?</strong> Visit the <a href="https://www.pan.utiitsl.com/csf.html" target="_blank" className="text-blue-600 font-medium underline"> Website</a> or your nearest center.
                         <br />
-                        🔹 <strong>Impact on Forms:</strong> Incorrect information can cause <strong>rejections in passport, and bank applications</strong>.
+                        🔹 <strong>Impact on Forms:</strong> Incorrect information can cause <strong>rejections in government schemes</strong>.
                       </p>
                     )}
                   </div>
@@ -206,12 +206,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
                   // Fallback to default message if no comparison result
                   <div className="mt-2 text-sm">
                     <p>
-                      Your Date of Birth <strong>does not match</strong> with the Aadhaar Card Date of Birth.
+                      Your Date of Birth <strong>does not match</strong> with the actual Date of Birth.
                     </p>
                     <p className="mt-2">
-                      🔹 <strong>How to Change It?</strong> Visit the <a href="https://uidai.gov.in/" target="_blank" className="text-blue-600 font-medium underline">UIDAI Website</a> or your nearest Aadhaar center.  
+                      🔹 <strong>How to Change It?</strong> Visit the <a href="https://www.pan.utiitsl.com/csf.html" target="_blank" className="text-blue-600 font-medium underline"> Website</a> or your nearest center.  
                       <br />
-                      🔹 <strong>Impact on Forms:</strong> Incorrect DOB can cause <strong>rejections in passport, and bank applications</strong>.  
+                      🔹 <strong>Impact on Forms:</strong> Incorrect DOB can cause <strong>rejections in government schemes</strong>.  
                     </p>
                   </div>
                 )}
